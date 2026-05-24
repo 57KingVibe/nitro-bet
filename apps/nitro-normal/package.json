@@ -1,0 +1,7 @@
+{
+  "name": "@nitro/normal",
+  "version": "1.0.0",
+  "main": "src/main.js",
+  "dependencies": { "@nitro/logic": "*" },
+  "scripts": { "start": "node src/main.js" }
+}

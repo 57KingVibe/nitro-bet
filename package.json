@@ -1,0 +1,17 @@
+{
+  "name": "nitro-bet-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:normal": "npm start -w @nitro/normal",
+    "dev:lite": "npm start -w @nitro/lite"
+  },
+  "dependencies": {
+    "@google/genai": "^1.51.0",
+    "lucide-react": "^1.14.0"
+  }
+}
