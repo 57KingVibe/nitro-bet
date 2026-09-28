@@ -1,37 +1,62 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const morgan = require('morgan');
+const NodeCache = require('node-cache');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+const cache = new NodeCache({ stdTTL: 5 }); 
+
+app.use(morgan('dev'));
+app.use(helmet());
+app.use(compression());
 app.use(express.json());
+
+app.use(cors({
+  origin: ['https://nitro-bet-the-express-way.onrender.com', 'http://localhost:5173', 'http://localhost:3000'],
+  credentials: true
+}));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, error: 'Too many requests, slow down!' }
+});
+app.use('/api/', limiter);
+
+const cacheMiddleware = (req, res, next) => {
+  const key = req.originalUrl;
+  const cachedData = cache.get(key);
+  if (cachedData) return res.json(cachedData);
+  res.sendResponse = res.json;
+  res.json = (body) => {
+    cache.set(key, body);
+    res.sendResponse(body);
+  };
+  next();
+};
 
 const NASCAR_API_BASE = 'https://feed.nascar.com';
 
-app.get('/api/stream/unified', async (req, res) => {
+app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
   try {
     const config = { timeout: 3000 };
     try {
       const [feed, temp, stats] = await Promise.all([
         axios.get(`${NASCAR_API_BASE}/api/LiveFeed`, config),
-        axios.get(`${NASCAR_API_BASE}/api/tracktemp/current`, config),
-        axios.get(`${NASCAR_API_BASE}/api/stats/boxscore`, config)
+        axios.get(`${NASCAR_API_BASE}/api/tracktemp`, config),
+        axios.get(`${NASCAR_API_BASE}/api/stats/top`, config)
       ]);
-
-      res.json({
-        trackConditions: { temp: temp.data.currentTemp },
-        leaderboard: stats.data.topThree
-      });
+      res.json({ trackConditions: { temp: temp.data.current }, leaderboard: stats.data.topThree });
     } catch (apiError) {
-      console.log("⚠️ NASCAR API offline. Injecting Ghost Mode simulation...");
+      console.log("⚠️ NASCAR API offline. Injecting fallback telemetry...");
       res.json({
         trackConditions: { temp: "115" },
-        leaderboard: [
-          { name: "K. Larson" },
-          { name: "C. Elliott" },
-          { name: "R. Blaney" }
-        ]
+        leaderboard: [{ name: "K. Larson" }, { name: "C. Elliott" }, { name: "R. Blaney" }]
       });
     }
   } catch (err) {
@@ -39,4 +64,5 @@ app.get('/api/stream/unified', async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log('Nitro Backend running on port 5000 - CORS Active'));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Production server running on port ${PORT}`));
