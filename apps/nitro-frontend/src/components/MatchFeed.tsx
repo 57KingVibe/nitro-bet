@@ -9,7 +9,7 @@ const MatchFeed = () => {
     const fetchTelemetry = async () => {
       try {
         // Hitting your local Tactical Engine on port 5000
-        const res = await axios.get('http://localhost:5000/api/stream/unified');
+        const res = await axios.get('https://nitro-bet-the-express-way.onrender.com/api/stream/unified');
         setFeedData(res.data);
         setError(false);
       } catch (err) {
