@@ -15,6 +15,7 @@ app.use(morgan('dev'));
 app.use(helmet());
 app.use(compression());
 app.use(express.json());
+app.use(require('./geoBlock'));
 
 app.use(cors({
   origin: ['https://nitro-bet-the-express-way.onrender.com', 'http://localhost:5173', 'http://localhost:3000'],
