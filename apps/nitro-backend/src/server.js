@@ -65,5 +65,9 @@ app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
   }
 });
 
+// The new Phase 2 Odds API Route
+app.get('/api/odds', require('./odds'));
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Production server running on port ${PORT}`));
+
