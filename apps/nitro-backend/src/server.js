@@ -66,10 +66,10 @@ app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
 });
 
 // The new Phase 2 Odds API Route
-app.get('/api/odds', require('./odds'));
-app.use('/api/tiers', require('./tierRouter'));
-app.use('/api/payments', require('./payments'));
-app.use('/api/verify', require('./verifier'));
+// app.get('/api/odds', require('./odds'));
+// app.get('/api/tiers', require('./tierRouter'));
+// app.post('/api/payments', require('./payments'));
+// app.post('/api/verify', require('./verifier'));
 
 const path = require('path');
 
