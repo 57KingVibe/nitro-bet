@@ -71,6 +71,14 @@ app.use('/api/tiers', require('./tierRouter'));
 app.use('/api/payments', require('./payments'));
 app.use('/api/verify', require(' ./verifier'));
 
+const path = require('path');
+
+// serve frontend static file in production
+app.use(express.static(path.join(__dirname, '../../nitro-frontend/dist')));
+app.get('*', (req, res) => {
+res.sendFile(path.join(__dirname, '../../nitro-frontend/dist/index.html'));
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Production server running on port ${PORT}`));
 
