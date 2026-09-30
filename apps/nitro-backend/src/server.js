@@ -69,7 +69,7 @@ app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
 app.get('/api/odds', require('./odds'));
 app.use('/api/tiers', require('./tierRouter'));
 app.use('/api/payments', require('./payments'));
-app.use('/api/verify', require(' ./verifier'));
+app.use('/api/verify', require('./verifier'));
 
 const path = require('path');
 
