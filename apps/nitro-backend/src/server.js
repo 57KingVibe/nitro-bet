@@ -17,11 +17,10 @@ app.use(helmet());
 app.use(compression());
 app.use(express.json());
 
-// Safely require geoBlock if it exists, otherwise bypass
 try {
   app.use(require('./geoBlock'));
 } catch (e) {
-  console.log("geoBlock module not found, skipping...");
+  // bypassed safely
 }
 
 app.use(cors({
@@ -61,7 +60,6 @@ app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
       ]);
       res.json({ trackConditions: { temp: temp.data.current }, leaderboard: stats.data.topThree });
     } catch (apiError) {
-      console.log("NASCAR API offline. Injecting fallback telemetry...");
       res.json({
         trackConditions: { temp: "115" },
         leaderboard: [{ name: "K. Larson" }, { name: "C. Elliott" }, { name: "R. Blaney" }]
@@ -72,14 +70,13 @@ app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
   }
 });
 
-// Phase 6 Routes (Wrapped in try/catch so boot never fails if files are missing)
-try { app.get('/api/odds', require('./odds')); } catch(e) { console.log("odds route pending"); }
-try { app.use('/api/tiers', require('./tierRouter')); } catch(e) { console.log("tiers route pending"); }
-try { app.use('/api/payments', require('./payments')); } catch(e) { console.log("payments route pending"); }
-try { app.use('/api/verify', require('./verifier')); } catch(e) { console.log("verifier route pending"); }
+try { app.get('/api/odds', require('./odds')); } catch(e) {}
+try { app.use('/api/tiers', require('./tierRouter')); } catch(e) {}
+try { app.use('/api/payments', require('./payments')); } catch(e) {}
+try { app.use('/api/verify', require('./verifier')); } catch(e) {}
 
-// Serve React Frontend Static Assets
-const frontendDist = path.join(__dirname, '../../nitro-frontend/dist');
+// Absolute path resolution for Render monorepo structure
+const frontendDist = path.resolve(__dirname, '../../nitro-frontend/dist');
 app.use(express.static(frontendDist));
 
 app.use('*', (req, res) => {
@@ -88,4 +85,3 @@ app.use('*', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Production server running on port ${PORT}`));
- 
