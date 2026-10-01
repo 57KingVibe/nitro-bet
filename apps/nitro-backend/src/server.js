@@ -1,87 +1,76 @@
-const express = require('express');
-const axios = require('axios');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const morgan = require('morgan');
-const NodeCache = require('node-cache');
-const path = require('path');
-require('dotenv').config();
+import express from 'express';
+import http from 'http';
+import helmet from 'helmet';
+import cors from 'cors';
+import compression from 'compression';
+import { rateLimit } from 'express-rate-limit';
+import pinoHttp from 'pino-http';
+import { Server as SocketIOServer } from 'socket.io';
+
+import { env } from './config/env.js';
+import { initDb } from './config/db.js';
+import { errorHandler } from './middleware/errorHandler.js';
+
+import paymentsRouter from './routes/payments.js';
+import oddsRouter from './routes/odds.js';
 
 const app = express();
-const cache = new NodeCache({ stdTTL: 5 });
+const server = http.createServer(app);
 
-app.use(morgan('dev'));
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: env.FRONTEND_URL,
+    methods: ['GET', 'POST'],
+  },
+});
+
 app.use(helmet());
+app.use(cors({ origin: env.FRONTEND_URL }));
 app.use(compression());
 app.use(express.json());
 
-try {
-  app.use(require('./geoBlock'));
-} catch (e) {
-  // bypassed safely
-}
+app.use(
+  pinoHttp({
+    quietReqLogger: true,
+    transport: env.NODE_ENV !== 'production' ? { target: 'pino-pretty' } : undefined,
+  })
+);
 
-app.use(cors({
-  origin: ['https://nitro-bet-the-express-way.onrender.com', 'http://localhost:5173', 'http://localhost:3000'],
-  credentials: true
-}));
-
-const limiter = rateLimit({
+const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: { success: false, error: 'Too many requests, slow down!' }
+  message: { error: 'Too many requests from this IP, please try again later.' },
 });
-app.use('/api/', limiter);
+app.use('/api/', globalLimiter);
 
-const cacheMiddleware = (req, res, next) => {
-  const key = req.originalUrl;
-  const cachedData = cache.get(key);
-  if (cachedData) return res.json(cachedData);
-  res.sendResponse = res.json;
-  res.json = (body) => {
-    cache.set(key, body);
-    res.sendResponse(body);
-  };
-  next();
+app.use('/api/payments', paymentsRouter);
+app.use('/api/odds', oddsRouter);
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+io.on('connection', (socket) => {
+  console.log(`[WS] Client connected: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    console.log(`[WS] Client disconnected: ${socket.id}`);
+  });
+});
+
+app.use(errorHandler);
+
+const startServer = async () => {
+  try {
+    await initDb();
+    server.listen(env.PORT, () => {
+      console.log(`[CORE] Nitro-Bet Engine live on port ${env.PORT} [${env.NODE_ENV}]`);
+    });
+  } catch (err) {
+    console.error('[CRITICAL] Boot failed:', err);
+    process.exit(1);
+  }
 };
 
-const NASCAR_API_BASE = 'https://feed.nascar.com';
+startServer();
 
-app.get('/api/stream/unified', cacheMiddleware, async (req, res) => {
-  try {
-    const config = { timeout: 3000 };
-    try {
-      const [feed, temp, stats] = await Promise.all([
-        axios.get(`${NASCAR_API_BASE}/api/LiveFeed`, config),
-        axios.get(`${NASCAR_API_BASE}/api/tracktemp`, config),
-        axios.get(`${NASCAR_API_BASE}/api/stats/top`, config)
-      ]);
-      res.json({ trackConditions: { temp: temp.data.current }, leaderboard: stats.data.topThree });
-    } catch (apiError) {
-      res.json({
-        trackConditions: { temp: "115" },
-        leaderboard: [{ name: "K. Larson" }, { name: "C. Elliott" }, { name: "R. Blaney" }]
-      });
-    }
-  } catch (err) {
-    res.status(500).json({ error: "Pipeline bottleneck" });
-  }
-});
-
-try { app.get('/api/odds', require('./odds')); } catch(e) {}
-try { app.use('/api/tiers', require('./tierRouter')); } catch(e) {}
-try { app.use('/api/payments', require('./payments')); } catch(e) {}
-try { app.use('/api/verify', require('./verifier')); } catch(e) {}
-
-// Absolute path resolution for Render monorepo structure
-const frontendDist = path.resolve(__dirname, '../../nitro-frontend/dist');
-app.use(express.static(frontendDist));
-
-app.use('*', (req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'));
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Production server running on port ${PORT}`));
