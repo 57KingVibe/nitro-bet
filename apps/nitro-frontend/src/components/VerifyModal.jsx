@@ -32,15 +32,15 @@ export default function VerifyModal() {
           />
           
           <button 
-            onClick={() => setHash('0xVerified... (Simulated)')}
+            onClick={() => setHash('Demo only: provably-fair verification is not implemented yet.')}
             className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-lg transition-colors"
           >
             VERIFY OUTCOME
           </button>
 
           {hash && (
-            <div className="mt-4 p-3 bg-green-900/30 border border-green-500 rounded text-green-400 text-center font-mono text-sm">
-              Match Validated: {hash}
+            <div className="mt-4 p-3 bg-amber-900/30 border border-amber-500 rounded text-amber-400 text-center font-mono text-sm">
+              {hash}
             </div>
           )}
         </div>

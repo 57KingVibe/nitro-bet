@@ -1,0 +1,15 @@
+# Blueprint for the FRONTEND only (static site). Your existing API service
+# ("Nitro bet the express way") is intentionally NOT declared here so Render won't try to recreate it.
+services:
+  - type: web
+    runtime: static
+    name: nitro-bet-web
+    buildCommand: npm install && npm run build --workspace nitro-bet-frontend
+    staticPublishPath: apps/nitro-frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://nitro-bet-the-express-way.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

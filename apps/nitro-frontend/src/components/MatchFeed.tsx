@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../constants';
 
 const MatchFeed = () => {
   const [feedData, setFeedData] = useState<any>(null);
@@ -8,8 +9,7 @@ const MatchFeed = () => {
   useEffect(() => {
     const fetchTelemetry = async () => {
       try {
-        // Hitting your local Tactical Engine on port 5000
-        const res = await axios.get('https://nitro-bet-the-express-way.onrender.com/api/stream/unified');
+        const res = await axios.get(`${API_BASE_URL}/api/stream/unified`, { timeout: 10000 });
         setFeedData(res.data);
         setError(false);
       } catch (err) {
@@ -21,8 +21,8 @@ const MatchFeed = () => {
     // Initial fetch
     fetchTelemetry();
     
-    // High-frequency polling (every 5 seconds) to catch grid shifts instantly
-    const interval = setInterval(fetchTelemetry, 5000);
+    // Poll every 10s (the API caches upstream data for 15s, so faster polling gains nothing)
+    const interval = setInterval(fetchTelemetry, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -37,7 +37,7 @@ const MatchFeed = () => {
   if (!feedData) {
     return (
       <div className="p-4 flex items-center justify-center">
-         <p className="text-blue-500 font-mono text-sm animate-pulse">Establishing secure link to NASCAR grid...</p>
+         <p className="text-blue-500 font-mono text-sm animate-pulse">Establishing link to the F1 grid...</p>
       </div>
     );
   }
@@ -51,7 +51,7 @@ const MatchFeed = () => {
           LIVE TELEMETRY
         </h2>
         <span className="text-[10px] bg-slate-800 px-2 py-1 rounded text-blue-400 font-mono">
-          SYNCED
+          {feedData.stale ? 'STALE' : 'SYNCED'}
         </span>
       </div>
       
@@ -60,7 +60,7 @@ const MatchFeed = () => {
         <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Track Temp</h3>
           <p className="text-2xl font-light text-blue-300">
-            {feedData.trackConditions?.temp ? `${feedData.trackConditions.temp}°F` : 'OPTIMAL'}
+            {feedData.trackConditions?.tempC != null ? `${feedData.trackConditions.tempC}°C` : 'N/A'}
           </p>
         </div>
         
@@ -71,7 +71,7 @@ const MatchFeed = () => {
              {feedData.leaderboard && feedData.leaderboard.length > 0 ? (
                feedData.leaderboard.map((driver: any, i: number) => (
                  <div key={i} className="flex justify-between items-center text-sm py-2 border-b border-slate-800/50 last:border-0">
-                   <span className="font-medium text-slate-300"><span className="text-blue-500 mr-2">{i + 1}.</span> {driver.name}</span>
+                   <span className="font-medium text-slate-300"><span className="text-blue-500 mr-2">{driver.position ?? i + 1}.</span> {driver.name}</span>
                  </div>
                ))
              ) : (

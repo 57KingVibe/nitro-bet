@@ -3,13 +3,18 @@ import { env } from './env.js';
 
 const { Pool } = pkg;
 
+const useSsl = env.DATABASE_SSL ? env.DATABASE_SSL === 'true' : env.NODE_ENV === 'production';
+
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
-  ssl: env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20,
+  ssl: useSsl ? { rejectUnauthorized: false } : false,
+  max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // 2s was too tight for a cold free-tier Postgres
 });
+
+// An unhandled 'error' event on the pool (e.g. a dropped idle connection) would crash the process.
+pool.on('error', (err) => console.error('[DB] idle client error:', err.message));
 
 export const initDb = async () => {
   const client = await pool.connect();

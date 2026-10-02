@@ -7,6 +7,11 @@
     "packages/*"
   ],
   "scripts": {
+    "dev:api": "npm run dev -w nitro-backend",
+    "dev:web": "npm run dev -w nitro-bet-frontend",
+    "build:web": "npm run build -w nitro-bet-frontend",
+    "start:api": "npm start -w nitro-backend",
+    "test": "npm test -w nitro-backend",
     "dev:normal": "npm start -w @nitro/normal",
     "dev:lite": "npm start -w @nitro/lite"
   },

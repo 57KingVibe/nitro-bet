@@ -1,4 +1,15 @@
 node_modules/
 .env
+.env.*
+!.env.example
 dist/
 .DS_Store
+*.db
+*.save
+# never commit keys
+download
+download.pub
+id_rsa*
+id_ed25519*
+*.pem
+*.key

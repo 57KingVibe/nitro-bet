@@ -10,7 +10,9 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters long"),
   NOWPAYMENTS_API_KEY: z.string().optional(),
   ODDS_API_KEY: z.string().optional(),
-  FRONTEND_URL: z.string().default('*')
+  FRONTEND_URL: z.string().default('*'), // comma-separated list of allowed origins, or *
+  DATABASE_SSL: z.enum(['true', 'false']).optional(), // override the production default
+  OPENF1_BASE_URL: z.string().url().default('https://api.openf1.org/v1'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
