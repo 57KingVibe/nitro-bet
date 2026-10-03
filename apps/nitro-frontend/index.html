@@ -3,32 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NitroBet | KingVibe57</title>
+    <meta name="theme-color" content="#020617">
+    <title>NitroBet | Motorsport Betting</title>
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <link rel="apple-touch-icon" href="/logo.png" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617;
+            background-color: #020617; /* slate-950 */
             color: #f8fafc;
             margin: 0;
-            overflow: hidden;
-            overscroll-behavior: none;
+            overflow-x: hidden;
         }
-        .font-racing { font-family: 'Orbitron', sans-serif; }
-        ::-webkit-scrollbar { display: none; }
-        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
-        .glow-indigo { box-shadow: 0 0 15px rgba(99, 102, 241, 0.5); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .font-racing {
+            font-family: 'Orbitron', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ef4444;
+            border-radius: 10px;
+        }
+        .carbon-bg {
+            background-image: linear-gradient(45deg, #111 25%, transparent 25%),
+                              linear-gradient(-45deg, #111 25%, transparent 25%),
+                              linear-gradient(45deg, transparent 75%, #111 75%),
+                              linear-gradient(-45deg, transparent 75%, #111 75%);
+            background-size: 4px 4px;
+            background-color: #1a1a1a;
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+        @keyframes slide-in {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-slide-in {
+            animation: slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .animate-fade-in {
+            animation: fade-in 0.4s ease-out;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-50 antialiased h-screen w-screen">
-    <div id="root" class="h-full w-full"></div>
+<body>
+    <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
 </body>
 </html>
-

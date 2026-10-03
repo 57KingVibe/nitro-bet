@@ -1,3 +1,22 @@
+# Nitro-Bet: original UI restored (Oct 3)
+
+The frontend in `apps/nitro-frontend` is your original "NitroBet: Motorsport Adrenaline" design again:
+side rail with F1 / WRC / GT / IndyCar, driver odds cards with stake input, bet slip with bet types and Ghost toggle,
+race results, and the account drawer (wallet, stakes, history, settings).
+
+- **No Gemini / AI code anywhere.** Removed: the AI Strategist tiles, Rapid Intel, Pit-Radio, The Spotter chat, `services/gemini.ts`,
+  and the `@google/genai`, `openai`, `axios`, `lucide-react`, `socket.io-client` dependencies.
+- The two AI tiles at the top are now **Live Telemetry / Grid Leaders**, fed by your own API (`/api/stream/unified`).
+- Bet slip: the original had two buttons, and the one inside the slip cleared bets without charging the balance. It is now one button that charges the balance.
+- Wallet buttons (deposit / withdraw / send) update a **local demo balance** only. Odds are simulated. A "Demo" label says so.
+- The previous Gemini-rewritten frontend is kept in `legacy/frontend-gemini-rewrite/`.
+- Run `npm install` once and commit the refreshed `package-lock.json` (dependencies were removed).
+
+Buttons that are visual only until a backend exists: Verify Now (KYC), Sign Out, 2FA / Biometric toggles (they flip locally).
+Copy to reword before real users see it: "E2EE", "AES-256", "Nodes: 14 | Latency: 4ms", "salt-hashed and private" describe things that do not exist yet.
+
+---
+
 # Nitro-Bet: fix pass (Oct 2026)
 
 ## What Render's logs showed
