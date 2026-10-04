@@ -1,3 +1,24 @@
+# Nitro-Bet: accounts, ledger, bets and settlement (Oct 4)
+
+New in `apps/nitro-backend` (no new dependencies):
+- **Accounts:** `POST /api/auth/register` (18+ checked on the server) and `/api/auth/login`. Passwords use scrypt (built into Node). `GET /api/me`, `/api/me/ledger`, `POST /api/me/self-exclude`.
+- **Ledger:** every balance is the sum of an append-only table (a database trigger blocks edits and deletes). Money is whole cents, never floats.
+- **Bets:** `POST /api/wagers`. The server reads the odds itself and locks them at placement, refuses a worse price than the player saw, enforces stake limits and self-exclusion, and a repeated `idempotencyKey` never charges twice.
+- **Settlement:** `POST /api/admin/markets/:id/settle | void | close` and `POST /api/admin/markets` (create). Needs the `X-Admin-Key` header. Settling twice is refused. Everything is written to `audit_log`.
+- **Compliance hooks:** `BLOCKED_COUNTRIES` (checked against Cloudflare's country header; blocks register, login and betting) and `REAL_MONEY_ENABLED`.
+- **Play money:** while `REAL_MONEY_ENABLED` is false (the default), new accounts get 1000.00 PLAY credits and a demo market is created.
+- **Real money is deliberately switched off in code.** Even with `REAL_MONEY_ENABLED=true` the API refuses bets until ID verification and payments exist. A wrong environment variable cannot start taking real stakes.
+- Removed from the running API: the fake `/api/odds/live` route (moved to `legacy/backend-esm/`) and the old cashback route, which now answers 501.
+
+Set on Render (API service > Environment): `ADMIN_API_KEY` = 24+ random characters, for example `openssl rand -base64 36 | tr -d '/+='`. Without it the admin API stays off.
+On first boot the API creates the new tables (`players`, `ledger_entries`, `markets`, `outcomes`, `wagers`, `audit_log`). The old `users/bets/transactions` tables are left alone.
+Check it after deploying: `BASE=https://your-api.onrender.com ADMIN_API_KEY=... bash apps/nitro-backend/scripts/smoke.sh`
+
+Not built yet: the frontend still uses its local demo wallet (login screen and server wallet are next), ID verification, deposits and withdrawals, cashback, automatic settlement from race results.
+The database code was checked by reading and by unit tests of the pure logic (14 pass), but not run against a real Postgres. The smoke script is that test.
+
+---
+
 # Nitro-Bet: original UI restored (Oct 3)
 
 The frontend in `apps/nitro-frontend` is your original "NitroBet: Motorsport Adrenaline" design again:

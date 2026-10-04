@@ -9,11 +9,18 @@ import { Server as SocketIOServer } from 'socket.io';
 
 import { env } from './config/env.js';
 import { initDb } from './config/db.js';
+import { runMigrations } from './db/migrate.js';
+import { seedDemoMarket } from './db/seed.js';
+import { geoBlock } from './middleware/compliance.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import paymentsRouter from './routes/payments.js';
-import oddsRouter from './routes/odds.js';
 import streamRouter from './routes/stream.js';
+import authRouter from './routes/auth.js';
+import meRouter from './routes/me.js';
+import marketsRouter from './routes/markets.js';
+import wagersRouter from './routes/wagers.js';
+import adminRouter from './routes/admin.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -46,20 +53,45 @@ app.use('/api/stream', streamRouter);
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000, // generous: many phones share one carrier IP. Auth and betting have their own tighter limits.
   message: { error: 'Too many requests from this IP, please try again later.' },
 });
 app.use('/api/', globalLimiter);
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, try again later.' },
+});
+
 app.use('/api/payments', paymentsRouter);
-app.use('/api/odds', oddsRouter);
+
+// Public: what the UI needs to know before anyone logs in.
+app.get('/api/config', (req, res) => {
+  res.json({
+    realMoney: env.REAL_MONEY_ENABLED === 'true',
+    currency: env.REAL_MONEY_ENABLED === 'true' ? 'USD' : 'PLAY',
+    minAge: env.MIN_AGE,
+    minStakeMinor: env.MIN_STAKE_MINOR,
+    maxStakeMinor: env.MAX_STAKE_MINOR,
+  });
+});
+
+app.use('/api/markets', marketsRouter);
+app.use('/api/auth', geoBlock, authLimiter, authRouter);
+app.use('/api/me', geoBlock, meRouter);
+app.use('/api/wagers', geoBlock, wagersRouter);
+app.use('/api/admin', adminRouter);
 
 // Opening the bare URL used to return a plain 404; give it a useful answer.
 app.get('/', (req, res) => {
   res.json({
     service: 'nitro-bet-api',
     status: 'ok',
-    endpoints: ['/health', '/api/stream/unified', '/api/odds/live', 'POST /api/payments/cashback'],
+    mode: env.REAL_MONEY_ENABLED === 'true' ? 'real-money' : 'play-money',
+    endpoints: ['/health', '/api/config', '/api/markets', '/api/stream/unified', '/api/auth/register', '/api/auth/login', '/api/me', '/api/wagers'],
   });
 });
 
@@ -80,6 +112,11 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await initDb();
+    await runMigrations();
+    await seedDemoMarket();
+    if (env.REAL_MONEY_ENABLED === 'true') {
+      console.warn('[COMPLIANCE] REAL_MONEY_ENABLED=true, but deposits, withdrawals and ID verification are not built yet.');
+    }
     server.listen(env.PORT, '0.0.0.0', () => {
       console.log(`[CORE] Nitro-Bet Engine live on port ${env.PORT} [${env.NODE_ENV}]`);
     });
