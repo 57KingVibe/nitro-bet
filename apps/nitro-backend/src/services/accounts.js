@@ -49,15 +49,21 @@ export async function loginPlayer({ email, password }) {
 
 export async function getProfile(playerId) {
   const { rows } = await pool.query(
-    'SELECT id, email, display_name, self_excluded_until FROM players WHERE id = $1', [playerId]);
+    'SELECT id, email, display_name, self_excluded_until, ghost_mode FROM players WHERE id = $1', [playerId]);
   if (!rows[0]) throw new HttpError(401, 'Account not found.', 'NO_ACCOUNT');
   const balanceMinor = await getBalanceMinor(pool, playerId);
   return {
     id: rows[0].id, email: rows[0].email, displayName: rows[0].display_name,
     currency: activeCurrency(), realMoney: env.REAL_MONEY_ENABLED === 'true',
     balanceMinor, balance: formatMinor(balanceMinor),
-    selfExcludedUntil: rows[0].self_excluded_until,
+    selfExcludedUntil: rows[0].self_excluded_until, ghostMode: rows[0].ghost_mode,
   };
+}
+
+export async function updateSettings(playerId, { ghostMode }) {
+  const { rows } = await pool.query('UPDATE players SET ghost_mode = $2 WHERE id = $1 RETURNING ghost_mode', [playerId, ghostMode]);
+  if (!rows[0]) throw new HttpError(401, 'Account not found.', 'NO_ACCOUNT');
+  return { ghostMode: rows[0].ghost_mode };
 }
 
 /** Can only be extended, never shortened. */

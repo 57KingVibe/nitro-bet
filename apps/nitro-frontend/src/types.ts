@@ -78,3 +78,15 @@ export interface RaceResult {
   team: string;
   podium: string[];
 }
+
+/** One line on the prediction slip (a pick the player has not confirmed yet). */
+export interface SlipItem {
+  outcomeId: string;
+  marketTitle: string;
+  label: string;
+  odds: number;
+  stake: number;
+  trend: 'up' | 'down' | 'stable';
+  idempotencyKey: string; // reused on retry so a flaky connection can never charge twice
+  error?: string;
+}

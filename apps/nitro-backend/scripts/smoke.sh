@@ -48,6 +48,13 @@ if [ -n "$ADMIN_API_KEY" ]; then
     -H 'Content-Type: application/json' -d "{\"winningOutcomeId\":\"$OUTCOME_ID\"}"; echo
   say "11. balance after payout (stake + winnings returned)"
   curl -sS --max-time 60 "$BASE/api/me" -H "Authorization: Bearer $TOKEN"; echo
+  say "12. weekly leaderboard (public; expect your smoke player near the top with a positive net)"
+  curl -sS --max-time 60 "$BASE/api/leaderboard?period=week" | cut -c1-400; echo
+  say "13. my rank"
+  curl -sS --max-time 60 "$BASE/api/leaderboard/me?period=week" -H "Authorization: Bearer $TOKEN"; echo
+  say "14. ghost mode on, then the leaderboard must hide the name"
+  curl -sS --max-time 60 -X PATCH "$BASE/api/me/settings" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"ghostMode":true}'; echo
+  curl -sS --max-time 60 "$BASE/api/leaderboard?period=week" | cut -c1-300; echo
   echo; echo "NOTE: that settled the demo market. Create a fresh one before the next run:"
   echo "  curl -X POST $BASE/api/admin/markets -H \"X-Admin-Key: \$ADMIN_API_KEY\" -H 'Content-Type: application/json' \\"
   echo "    -d '{\"title\":\"Next F1 Race: Winner\",\"outcomes\":[{\"label\":\"Max Verstappen\",\"odds\":1.59},{\"label\":\"Lando Norris\",\"odds\":3.56}]}'"

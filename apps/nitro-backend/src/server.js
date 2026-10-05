@@ -21,6 +21,7 @@ import meRouter from './routes/me.js';
 import marketsRouter from './routes/markets.js';
 import wagersRouter from './routes/wagers.js';
 import adminRouter from './routes/admin.js';
+import leaderboardRouter from './routes/leaderboard.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -76,10 +77,12 @@ app.get('/api/config', (req, res) => {
     minAge: env.MIN_AGE,
     minStakeMinor: env.MIN_STAKE_MINOR,
     maxStakeMinor: env.MAX_STAKE_MINOR,
+    weeklyPrizeEnabled: env.WEEKLY_PRIZE_ENABLED === 'true',
   });
 });
 
 app.use('/api/markets', marketsRouter);
+app.use('/api/leaderboard', leaderboardRouter);
 app.use('/api/auth', geoBlock, authLimiter, authRouter);
 app.use('/api/me', geoBlock, meRouter);
 app.use('/api/wagers', geoBlock, wagersRouter);
@@ -91,7 +94,7 @@ app.get('/', (req, res) => {
     service: 'nitro-bet-api',
     status: 'ok',
     mode: env.REAL_MONEY_ENABLED === 'true' ? 'real-money' : 'play-money',
-    endpoints: ['/health', '/api/config', '/api/markets', '/api/stream/unified', '/api/auth/register', '/api/auth/login', '/api/me', '/api/wagers'],
+    endpoints: ['/health', '/api/config', '/api/markets', '/api/leaderboard', '/api/stream/unified', '/api/auth/register', '/api/auth/login', '/api/me', '/api/wagers'],
   });
 });
 

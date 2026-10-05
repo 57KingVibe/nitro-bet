@@ -22,6 +22,8 @@ const envSchema = z.object({
   MAX_STAKE_MINOR: z.coerce.number().int().positive().default(50000),   // 500.00
   SIGNUP_CREDIT_MINOR: z.coerce.number().int().min(0).default(100000),  // 1000.00 play money, play mode only
   JWT_EXPIRES_IN: z.string().default('7d'),
+  LEADERBOARD_MIN_SETTLED: z.coerce.number().int().min(1).default(1), // settled predictions needed to appear
+  WEEKLY_PRIZE_ENABLED: z.enum(['true', 'false']).default('false'),   // only changes what the UI says; no payout logic exists
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

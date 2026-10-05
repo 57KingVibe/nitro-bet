@@ -1,3 +1,25 @@
+# Nitro-Bet Phase 1: the Lite website (Oct 5)
+
+NitroBet Lite is a free-to-play prediction game. Points have no cash value and cannot be withdrawn.
+
+**Website** (`apps/nitro-frontend`, your original design)
+- Join / sign in screen (18+ date of birth checked by the server), 1,000 free points on sign-up.
+- Odds, predictions, balance, history and Ghost Mode all come from the server, so a refresh keeps everything.
+- Prediction slip: the server locks the price; if the odds moved, the slip shows the new price and asks again. A flaky connection never charges twice.
+- Weekly leaderboard ("Top Predictors", resets Monday 00:00 UTC) plus an all-time board. Ghost Mode shows players as `Ghost-XXXX`.
+- Wording is "predict" and "points", never "bet" and "$". Fake security claims (E2EE, AES-256, 2FA, biometric, KYC) were removed from the screens.
+- Installs on phones as an app (PWA): manifest, icons made from your N logo, service worker and an install card in Settings and the sidebar.
+- "Coming Fast" and "Race Results" still show sample data and are labelled that way.
+
+**Server** (`apps/nitro-backend`): migration `002_lite.sql` (adds `ghost_mode`), `GET /api/leaderboard`, `GET /api/leaderboard/me`, `PATCH /api/me/settings`, `GET /api/config`.
+
+**Prizes:** there is no prize or USDT payout logic. `WEEKLY_PRIZE_ENABLED` only changes a label. See the notes in chat before turning prizes on: free prize competitions are regulated in many countries.
+
+**Tests:** 18 backend unit tests, and a browser test of the whole site against a stand-in API (sign-up, under-18 refusal, predictions, odds change, Ghost Mode, leaderboard, sign-out, expired session). The real database code is checked by `scripts/smoke.sh`, steps 12-14 cover the leaderboard and ghost mode.
+Not checked: how it looks (the styling library needs the internet, which my test machine did not have). Please look at it on your phone.
+
+---
+
 # Nitro-Bet: accounts, ledger, bets and settlement (Oct 4)
 
 New in `apps/nitro-backend` (no new dependencies):

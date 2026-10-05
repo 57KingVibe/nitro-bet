@@ -84,9 +84,9 @@ const DriverCard: React.FC<DriverCardProps> = ({ driver, onBet }) => {
         
         <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
           <div className="flex-1 sm:flex-none">
-            <label className="block text-[8px] text-slate-500 uppercase font-black mb-1 ml-1 tracking-tighter">Stake Amount</label>
+            <label className="block text-[8px] text-slate-500 uppercase font-black mb-1 ml-1 tracking-tighter">Points to use</label>
             <div className="relative group/input">
-               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 font-bold text-[10px]">$</span>
+               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-600 font-bold text-[10px]">P</span>
                <input 
                 type="number" 
                 min="1"
@@ -101,7 +101,7 @@ const DriverCard: React.FC<DriverCardProps> = ({ driver, onBet }) => {
             onClick={handleBetClick}
             className="bg-slate-800/80 hover:bg-red-600 border border-slate-700 hover:border-red-500 rounded-lg px-4 py-2 flex flex-col items-center justify-center transition-all group-hover:scale-105 min-w-[100px] shadow-2xl relative overflow-hidden"
           >
-            <span className="text-[8px] text-slate-400 group-hover:text-white/80 font-black uppercase tracking-tighter mb-0.5">BET NOW @</span>
+            <span className="text-[8px] text-slate-400 group-hover:text-white/80 font-black uppercase tracking-tighter mb-0.5">PREDICT @</span>
             <div className="flex items-baseline gap-1">
               <span className="text-xl font-racing font-black text-white">{driver.odds.toFixed(2)}</span>
             </div>
