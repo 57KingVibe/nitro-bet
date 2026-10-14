@@ -1,0 +1,47 @@
+name: contracts
+
+on:
+  push:
+    paths:
+      - "apps/nitro-contracts/**"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    paths:
+      - "apps/nitro-contracts/**"
+      - ".github/workflows/contracts.yml"
+  workflow_dispatch:
+
+jobs:
+  forge-test:
+    runs-on: ubuntu-latest
+    env:
+      FOUNDRY_PROFILE: ci
+    defaults:
+      run:
+        working-directory: apps/nitro-contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned dependencies, fetched straight from GitHub (no git submodules to manage from a phone).
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenZeppelin/openzeppelin-contracts
+          ref: v5.1.0
+          path: apps/nitro-contracts/lib/openzeppelin-contracts
+
+      - uses: actions/checkout@v4
+        with:
+          repository: foundry-rs/forge-std
+          ref: v1.9.4
+          path: apps/nitro-contracts/lib/forge-std
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Show versions
+        run: forge --version
+
+      - name: Build
+        run: forge build --sizes
+
+      - name: Test (unit + fuzz)
+        run: forge test -vvv

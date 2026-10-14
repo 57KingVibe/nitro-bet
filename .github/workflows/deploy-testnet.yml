@@ -1,0 +1,62 @@
+name: deploy-testnet
+
+# Manual only: Actions tab -> deploy-testnet -> Run workflow.
+# Use a throwaway TESTNET key. Never put a mainnet or personal key in these secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      expected_chain_id:
+        description: "Chain id of the testnet (verify at docs.stable.xyz)"
+        required: true
+      token_address:
+        description: "USDT0 ERC-20 address on that testnet (6 decimals)"
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/nitro-contracts
+    env:
+      RPC_URL: ${{ secrets.TESTNET_RPC_URL }}
+      DEPLOYER_PRIVATE_KEY: ${{ secrets.TESTNET_DEPLOYER_KEY }}
+      EXPECTED_CHAIN_ID: ${{ inputs.expected_chain_id }}
+      TOKEN_ADDRESS: ${{ inputs.token_address }}
+      OWNER: ${{ vars.NITRO_OWNER }}
+      RESOLVER: ${{ vars.NITRO_RESOLVER }}
+      PERMIT_SIGNER: ${{ vars.NITRO_PERMIT_SIGNER }}
+      FEE_RECIPIENT: ${{ vars.NITRO_FEE_RECIPIENT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenZeppelin/openzeppelin-contracts
+          ref: v5.1.0
+          path: apps/nitro-contracts/lib/openzeppelin-contracts
+
+      - uses: actions/checkout@v4
+        with:
+          repository: foundry-rs/forge-std
+          ref: v1.9.4
+          path: apps/nitro-contracts/lib/forge-std
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Test before deploying
+        run: forge test
+
+      - name: Deploy
+        run: |
+          # Unset optional role variables that were left empty so the script falls back to the deployer.
+          for v in OWNER RESOLVER PERMIT_SIGNER FEE_RECIPIENT; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          forge script script/Deploy.s.sol:Deploy --rpc-url "$RPC_URL" --broadcast -vvv
+
+      - name: Keep the broadcast record
+        uses: actions/upload-artifact@v4
+        with:
+          name: broadcast
+          path: apps/nitro-contracts/broadcast
