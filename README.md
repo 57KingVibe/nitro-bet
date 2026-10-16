@@ -1,4 +1,23 @@
-# Nitro-Bet Phase 1: the Lite website (Oct 5)
+# Apexly: points-pool markets and the candle chart (Oct 14)
+
+New Lite markets are a **points pool** instead of fixed odds. This is the free rehearsal of the Full tier's pool contract.
+- **Price = share of the pool.** Every prediction moves the prices. The page shows the live price (the chance the crowd gives) and a candlestick chart per outcome (5m, 15m, 1h, 1d).
+- **Winners share the pot.** Payout = your points x total pot / winning pool. The final payout can differ from the estimate shown when you predicted, because the pool keeps moving. The account drawer shows the real payout once settled.
+- **Opening seeds.** Creating a market with odds sets the opening prices (the house puts 1,000 points on the outcomes in proportion to 1/odds, or `seedPoints` of your choice). Seeds count like a phantom player's stake, so winners are paid from real points plus the seed pot, and seeds never create new points.
+- **Nobody backed the winner:** every stake is refunded and the market is voided.
+- **Old markets stay fixed-odds** (`model: "fixed"`). New ones default to `pool`. Add `"model":"fixed"` to create the old kind.
+- Migration `003_pool.sql` (adds `markets.model`, `outcomes.seed_minor`, `wagers.payout_minor`) runs at boot. Leaderboard scores use the real payout.
+- After a prediction the page reloads prices and the chart straight away.
+- Create a pool market: the same `curl` as before. Optional extra field: `"seedPoints": 500`.
+- Check the live chart: `bash apps/nitro-backend/scripts/smoke-chart.sh`.
+
+Tested: 27 backend unit tests (pool maths: seeds add up exactly, payouts never exceed the pot over 300 random markets, candles, voids) and 32 checks in a real browser against a stand-in API that uses the same pool maths.
+Not tested against a real Postgres: the new SQL (the pool totals query, the chart query, settlement). The smoke scripts do that after you deploy.
+The chart skips quiet periods, so candles are evenly spaced, not time-proportional.
+
+---
+
+# Apexly (formerly NitroBet) Phase 1: the Lite website (Oct 5)
 
 NitroBet Lite is a free-to-play prediction game. Points have no cash value and cannot be withdrawn.
 

@@ -2,6 +2,7 @@ import { env } from '../config/env.js';
 import { withTx } from '../db/tx.js';
 import { HttpError } from '../lib/http-error.js';
 import { validateWager, planSettlement, planVoid, assertRealMoneyReady } from '../lib/betting-rules.js';
+import { poolState, estimateReturnMinor, planPoolSettlement } from '../lib/pool.js';
 import { centiToOdds, formatMinor } from '../lib/money.js';
 import { activeCurrency, getBalanceMinor } from './wallet.js';
 
@@ -11,8 +12,18 @@ export const mapWager = (r) => ({
   stakeMinor: Number(r.stake_minor), stake: formatMinor(Number(r.stake_minor)),
   oddsCenti: r.odds_centi, odds: centiToOdds(r.odds_centi),
   potentialPayoutMinor: Number(r.potential_payout_minor), potentialPayout: formatMinor(Number(r.potential_payout_minor)),
+  payoutMinor: r.payout_minor == null ? null : Number(r.payout_minor), payout: r.payout_minor == null ? null : formatMinor(Number(r.payout_minor)),
   status: r.status, createdAt: r.created_at, settledAt: r.settled_at,
 });
+
+// Current pools of a market (seeds + open/settled stakes), read inside the caller's transaction.
+const poolStateFor = async (client, marketId) => {
+  const { rows } = await client.query(
+    `SELECT o.id, o.seed_minor, COALESCE(SUM(w.stake_minor) FILTER (WHERE w.status <> 'void'), 0)::bigint AS staked
+     FROM outcomes o LEFT JOIN wagers w ON w.outcome_id = o.id
+     WHERE o.market_id = $1 GROUP BY o.id ORDER BY o.sort`, [marketId]);
+  return poolState(rows.map((r) => ({ id: r.id, seedMinor: Number(r.seed_minor), stakedMinor: Number(r.staked) })));
+};
 
 export async function placeWager({ playerId, outcomeId, stakeMinor, acceptedOddsCenti, idempotencyKey }) {
   assertRealMoneyReady(env.REAL_MONEY_ENABLED === 'true');
@@ -29,15 +40,25 @@ export async function placeWager({ playerId, outcomeId, stakeMinor, acceptedOdds
 
     // FOR SHARE on the market: settlement (FOR UPDATE) waits for in-flight bets, and no bet can slip in after it.
     const { rows: o } = await client.query(
-      `SELECT o.id AS outcome_id, o.market_id, o.odds_centi, m.status, m.closes_at
+      `SELECT o.id AS outcome_id, o.market_id, o.odds_centi, m.status, m.closes_at, m.model
        FROM outcomes o JOIN markets m ON m.id = o.market_id
        WHERE o.id = $1 FOR SHARE OF m`, [outcomeId]);
 
     const balanceMinor = await getBalanceMinor(client, playerId, currency);
-    const { oddsCenti, potentialPayoutMinor } = validateWager({
-      row: o[0], stakeMinor, balanceMinor, acceptedOddsCenti, now: new Date(),
+    // Pool markets: the price is the live pool share, so there is no fixed price to protect. The payout is an estimate.
+    let row = o[0];
+    let pooled = null;
+    if (row && row.model === 'pool') {
+      const state = await poolStateFor(client, row.market_id);
+      pooled = { ...state.outcomes.find((x) => x.id === outcomeId), totalMinor: state.totalMinor };
+      row = { ...row, odds_centi: pooled.oddsCenti };
+    }
+    const checked = validateWager({
+      row, stakeMinor, balanceMinor, acceptedOddsCenti: pooled ? null : acceptedOddsCenti, now: new Date(),
       minStakeMinor: env.MIN_STAKE_MINOR, maxStakeMinor: env.MAX_STAKE_MINOR, excludedUntil: p[0].self_excluded_until,
     });
+    const oddsCenti = checked.oddsCenti;
+    const potentialPayoutMinor = pooled ? estimateReturnMinor(stakeMinor, pooled.poolMinor, pooled.totalMinor) : checked.potentialPayoutMinor;
 
     const { rows: w } = await client.query(
       `INSERT INTO wagers (player_id, market_id, outcome_id, currency, stake_minor, odds_centi, potential_payout_minor, idempotency_key)
@@ -61,7 +82,7 @@ export async function listWagers(db, playerId, limit = 50) {
 }
 
 const lockMarket = async (client, marketId) => {
-  const { rows } = await client.query('SELECT id, status FROM markets WHERE id = $1 FOR UPDATE', [marketId]);
+  const { rows } = await client.query('SELECT id, status, model FROM markets WHERE id = $1 FOR UPDATE', [marketId]);
   if (!rows[0]) throw new HttpError(404, 'Market not found.', 'MARKET_NOT_FOUND');
   if (rows[0].status === 'settled' || rows[0].status === 'void') {
     throw new HttpError(409, 'Market is already finished.', 'MARKET_FINISHED');
@@ -74,19 +95,46 @@ const openWagers = async (client, marketId) => {
   return rows.map(mapWager);
 };
 
+const refundWagers = async (client, wagers) => {
+  const refunds = planVoid(wagers);
+  for (const item of refunds) {
+    await client.query("UPDATE wagers SET status = 'void', settled_at = now() WHERE id = $1", [item.wagerId]);
+    await client.query(
+      `INSERT INTO ledger_entries (player_id, currency, amount, kind, ref_id, idempotency_key)
+       VALUES ($1,$2,$3,'bet_refund',$4,$5) ON CONFLICT (idempotency_key) DO NOTHING`,
+      [item.playerId, item.currency, item.refundMinor, item.wagerId, `refund:${item.wagerId}`]);
+  }
+  return refunds;
+};
+
 const audit = (client, actor, action, details) =>
   client.query('INSERT INTO audit_log (actor, action, details) VALUES ($1,$2,$3)', [actor, action, JSON.stringify(details)]);
 
 export async function settleMarket({ marketId, winningOutcomeId, actor }) {
   return withTx(async (client) => {
-    await lockMarket(client, marketId);
+    const market = await lockMarket(client, marketId);
     const { rows: o } = await client.query('SELECT id FROM outcomes WHERE id = $1 AND market_id = $2', [winningOutcomeId, marketId]);
     if (!o[0]) throw new HttpError(400, 'That outcome does not belong to this market.', 'BAD_OUTCOME');
 
-    const plan = planSettlement(await openWagers(client, marketId), winningOutcomeId);
+    const wagers = await openWagers(client, marketId);
+    let plan;
+    if (market.model === 'pool') {
+      const { rows: s } = await client.query('SELECT id, seed_minor FROM outcomes WHERE market_id = $1', [marketId]);
+      const result = planPoolSettlement({ wagers, winningOutcomeId, seeds: Object.fromEntries(s.map((r) => [r.id, Number(r.seed_minor)])) });
+      if (result.voided) {
+        // Nobody backed the winner: give every stake back.
+        const refunds = await refundWagers(client, wagers);
+        await client.query("UPDATE markets SET status = 'void', settled_at = now() WHERE id = $1", [marketId]);
+        await audit(client, actor, 'market.settle_no_winning_stakes', { marketId, winningOutcomeId, refunded: refunds.length });
+        return { marketId, winningOutcomeId, voided: true, reason: 'NO_WINNING_STAKES', refunded: refunds.length };
+      }
+      plan = result.items;
+    } else {
+      plan = planSettlement(wagers, winningOutcomeId);
+    }
     let paidOutMinor = 0;
     for (const item of plan) {
-      await client.query('UPDATE wagers SET status = $2, settled_at = now() WHERE id = $1', [item.wagerId, item.status]);
+      await client.query('UPDATE wagers SET status = $2, payout_minor = $3, settled_at = now() WHERE id = $1', [item.wagerId, item.status, item.payoutMinor]);
       if (item.status === 'won') {
         paidOutMinor += item.payoutMinor;
         await client.query(
@@ -104,14 +152,7 @@ export async function settleMarket({ marketId, winningOutcomeId, actor }) {
 export async function voidMarket({ marketId, actor }) {
   return withTx(async (client) => {
     await lockMarket(client, marketId);
-    const refunds = planVoid(await openWagers(client, marketId));
-    for (const item of refunds) {
-      await client.query("UPDATE wagers SET status = 'void', settled_at = now() WHERE id = $1", [item.wagerId]);
-      await client.query(
-        `INSERT INTO ledger_entries (player_id, currency, amount, kind, ref_id, idempotency_key)
-         VALUES ($1,$2,$3,'bet_refund',$4,$5) ON CONFLICT (idempotency_key) DO NOTHING`,
-        [item.playerId, item.currency, item.refundMinor, item.wagerId, `refund:${item.wagerId}`]);
-    }
+    const refunds = await refundWagers(client, await openWagers(client, marketId));
     await client.query("UPDATE markets SET status = 'void', settled_at = now() WHERE id = $1", [marketId]);
     await audit(client, actor, 'market.void', { marketId, refunded: refunds.length });
     return { marketId, refunded: refunds.length };

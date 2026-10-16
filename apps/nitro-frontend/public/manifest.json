@@ -1,7 +1,7 @@
 {
-  "name": "NitroBet",
-  "short_name": "NitroBet",
-  "description": "Free motorsport predictions. Climb the weekly leaderboard.",
+  "name": "Apexly",
+  "short_name": "Apexly",
+  "description": "The Net Race. Free motorsport predictions. Climb the weekly leaderboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

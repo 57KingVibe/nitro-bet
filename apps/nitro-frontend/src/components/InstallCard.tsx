@@ -34,9 +34,9 @@ const InstallCard: React.FC = () => {
     <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2" data-testid="install-card">
       <p className="text-xs font-black uppercase text-white tracking-widest">Get the app</p>
       {installed ? (
-        <p className="text-[11px] text-emerald-400">NitroBet is installed on this device.</p>
+        <p className="text-[11px] text-emerald-400">Apexly is installed on this device.</p>
       ) : offer ? (
-        <button onClick={install} className="w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 font-racing text-xs font-black uppercase">Install NitroBet</button>
+        <button onClick={install} className="w-full py-3 rounded-lg bg-red-600 hover:bg-red-500 font-racing text-xs font-black uppercase">Install Apexly</button>
       ) : ios ? (
         <p className="text-[11px] text-slate-400 leading-snug">On iPhone or iPad, open this page in Safari, tap the Share button, then tap <b className="text-slate-200">Add to Home Screen</b>.</p>
       ) : (

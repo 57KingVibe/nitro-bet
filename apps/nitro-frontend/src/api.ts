@@ -8,16 +8,19 @@ export const setToken = (t: string): void => { try { localStorage.setItem(TOKEN_
 export const clearToken = (): void => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ } };
 
 // ---------- types (mirror the API) ----------
-export interface Outcome { id: string; label: string; odds: string; oddsCenti: number }
-export interface Market { id: string; title: string; sport: string; status: string; closesAt: string | null; outcomes: Outcome[] }
+export interface Outcome { id: string; label: string; odds: string; oddsCenti: number; priceBp?: number; poolMinor?: number }
+export interface Market { id: string; title: string; sport: string; status: string; closesAt: string | null; model?: 'pool' | 'fixed'; poolTotalMinor?: number; outcomes: Outcome[] }
 export interface Profile {
   id: string; email: string; displayName: string; currency: string; realMoney: boolean;
   balanceMinor: number; balance: string; ghostMode: boolean; selfExcludedUntil: string | null;
 }
 export interface WagerRow {
-  id: string; marketTitle: string; outcomeLabel: string; stake: string; odds: string; potentialPayout: string;
+  id: string; marketTitle: string; outcomeLabel: string; stake: string; odds: string; potentialPayout: string; payout?: string | null;
   status: 'open' | 'won' | 'lost' | 'void'; createdAt: string; settledAt: string | null;
 }
+export interface Candle { t: number; o: number; h: number; l: number; c: number; v: number }
+export interface ChartOutcome { id: string; label: string; poolMinor: number; priceBp: number; candles: Candle[] }
+export interface Chart { marketId: string; model: string; interval: string; total: string; totalMinor: number; outcomes: ChartOutcome[] }
 export interface LedgerEntry { id: number; kind: string; currency: string; amount: string; amountMinor: number; createdAt: string }
 export interface LeaderboardEntry { rank: number; name: string; net: string; netMinor: number; predictions: number }
 export interface Leaderboard { period: 'week' | 'all'; endsAt: string | null; prizesEnabled: boolean; minSettled: number; entries: LeaderboardEntry[] }
@@ -93,6 +96,7 @@ async function request<T>(path: string, opts: Opts = {}): Promise<T> {
 
 export const api = {
   markets: () => request<{ markets: Market[] }>('/api/markets'),
+  chart: (marketId: string, interval: '5m' | '15m' | '1h' | '1d') => request<Chart>(`/api/markets/${marketId}/chart?interval=${interval}`),
   leaderboard: (period: 'week' | 'all') => request<Leaderboard>(`/api/leaderboard?period=${period}`),
   myRank: (period: 'week' | 'all') => request<MyRank>(`/api/leaderboard/me?period=${period}`, { auth: true }),
   register: (b: { email: string; password: string; displayName: string; dateOfBirth: string }) =>

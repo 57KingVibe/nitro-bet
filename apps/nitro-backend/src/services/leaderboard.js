@@ -7,7 +7,7 @@ import { activeCurrency } from './wallet.js';
 // Net points = payouts received minus stakes, over predictions that have been settled.
 const SCORES_SQL = `
   SELECT p.id, p.display_name, p.ghost_mode, p.created_at,
-         SUM(CASE WHEN w.status = 'won' THEN w.potential_payout_minor - w.stake_minor ELSE -w.stake_minor END)::bigint AS net_minor,
+         SUM(CASE WHEN w.status = 'won' THEN COALESCE(w.payout_minor, w.potential_payout_minor) - w.stake_minor ELSE -w.stake_minor END)::bigint AS net_minor,
          COUNT(*)::int AS settled
   FROM wagers w JOIN players p ON p.id = w.player_id
   WHERE w.status IN ('won','lost') AND w.currency = $1 AND w.settled_at >= $2 AND w.settled_at < $3

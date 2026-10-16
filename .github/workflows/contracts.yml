@@ -1,47 +1,37 @@
+# Builds and tests the smart contract in the cloud on every push that touches contracts/.
+# Open the "Actions" tab of your repo (works in a phone browser) to see the result.
 name: contracts
 
 on:
   push:
-    paths:
-      - "apps/nitro-contracts/**"
-      - ".github/workflows/contracts.yml"
-  pull_request:
-    paths:
-      - "apps/nitro-contracts/**"
-      - ".github/workflows/contracts.yml"
+    paths: ['contracts/**', '.github/workflows/contracts.yml']
   workflow_dispatch:
 
 jobs:
-  forge-test:
+  test:
     runs-on: ubuntu-latest
-    env:
-      FOUNDRY_PROFILE: ci
     defaults:
       run:
-        working-directory: apps/nitro-contracts
+        working-directory: contracts
     steps:
       - uses: actions/checkout@v4
 
-      # Pinned dependencies, fetched straight from GitHub (no git submodules to manage from a phone).
-      - uses: actions/checkout@v4
-        with:
-          repository: OpenZeppelin/openzeppelin-contracts
-          ref: v5.1.0
-          path: apps/nitro-contracts/lib/openzeppelin-contracts
-
-      - uses: actions/checkout@v4
-        with:
-          repository: foundry-rs/forge-std
-          ref: v1.9.4
-          path: apps/nitro-contracts/lib/forge-std
-
       - uses: foundry-rs/foundry-toolchain@v1
 
-      - name: Show versions
-        run: forge --version
+      - name: Get libraries (pinned OpenZeppelin v5.0.2)
+        run: |
+          git clone --depth 1 --branch v5.0.2 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
+          git clone --depth 1 https://github.com/foundry-rs/forge-std lib/forge-std
 
       - name: Build
         run: forge build --sizes
 
-      - name: Test (unit + fuzz)
+      - name: Test
         run: forge test -vvv
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Payout model (plain Node)
+        run: node --test model/payout.test.mjs

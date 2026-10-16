@@ -1,0 +1,96 @@
+{
+  "name": "NitroBet - settle Lite market and announce",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## How to use\n1. Check the OFFICIAL race classification yourself.\n2. In 'Set winner' type the winner exactly as shown in the app, and your Discord webhook URL.\n3. Create a credential of type 'Header Auth' named 'NitroBet admin key': Name = X-Admin-Key, Value = your key. Pick it in 'Settle market (Lite)'.\n4. Click Execute workflow.\n\nSafety: this settles the free LITE market only. Never put a wallet private key in n8n. Full-tier results are posted from a multisig (Safe) by people who approve them.",
+        "height": 300,
+        "width": 420
+      },
+      "id": "n1000000-0000-4000-8000-000000000001",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {},
+      "id": "n1000000-0000-4000-8000-000000000002",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: {\n  winnerName: 'Max Verstappen',\n  apiBase: 'https://nitro-bet-the-express-way.onrender.com',\n  discordWebhook: ''\n} }];"
+      },
+      "id": "n1000000-0000-4000-8000-000000000003",
+      "name": "Set winner",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 380]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiBase }}/api/markets",
+        "options": { "timeout": 90000 }
+      },
+      "id": "n1000000-0000-4000-8000-000000000004",
+      "name": "Get open market",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 380]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('Set winner').first().json;\nconst market = ($json.markets || [])[0];\nif (!market) throw new Error('No open market to settle.');\nconst outcome = market.outcomes.find(o => o.label.toLowerCase() === cfg.winnerName.toLowerCase());\nif (!outcome) throw new Error('Winner not found. Options: ' + market.outcomes.map(o => o.label).join(', '));\nreturn [{ json: { marketId: market.id, title: market.title, outcomeId: outcome.id, winnerName: outcome.label, apiBase: cfg.apiBase } }];"
+      },
+      "id": "n1000000-0000-4000-8000-000000000005",
+      "name": "Pick ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.apiBase }}/api/admin/markets/{{ $json.marketId }}/settle",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ winningOutcomeId: $json.outcomeId }) }}",
+        "options": { "timeout": 90000 }
+      },
+      "id": "n1000000-0000-4000-8000-000000000006",
+      "name": "Settle market (Lite)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Set winner').first().json.discordWebhook }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Race result in: ' + $('Pick ids').first().json.winnerName + ' won \"' + $('Pick ids').first().json.title + '\". Lite predictions are settled. Check the weekly leaderboard!' }) }}"
+      },
+      "id": "n1000000-0000-4000-8000-000000000007",
+      "name": "Announce on Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 380]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": { "main": [[{ "node": "Set winner", "type": "main", "index": 0 }]] },
+    "Set winner": { "main": [[{ "node": "Get open market", "type": "main", "index": 0 }]] },
+    "Get open market": { "main": [[{ "node": "Pick ids", "type": "main", "index": 0 }]] },
+    "Pick ids": { "main": [[{ "node": "Settle market (Lite)", "type": "main", "index": 0 }]] },
+    "Settle market (Lite)": { "main": [[{ "node": "Announce on Discord", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

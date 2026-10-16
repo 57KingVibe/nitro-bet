@@ -14,6 +14,7 @@ import AccountModal from './components/AccountModal';
 import AuthModal from './components/AuthModal';
 import Leaderboard from './components/Leaderboard';
 import InstallCard from './components/InstallCard';
+import MarketChart from './components/MarketChart';
 
 type SortOrder = 'none' | 'asc' | 'desc';
 type BottomView = 'upcoming' | 'results';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [cards, setCards] = useState<Record<string, Driver[]>>({});
   const [marketsState, setMarketsState] = useState<'loading' | 'ok' | 'error'>('loading');
   const prevOdds = useRef<PrevOdds>({});
+  const [marketsKey, setMarketsKey] = useState(0);   // bump to reload the markets right now
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [wagers, setWagers] = useState<WagerRow[] | null>(null);
@@ -44,6 +46,20 @@ const App: React.FC = () => {
     setToast({ kind, text });
     setTimeout(() => setToast((t) => (t && t.text === text ? null : t)), 4500);
   }, []);
+
+  // Estimated return if a pick wins. Pool markets: your points also move the pool, so the estimate is lower than stake x odds.
+  const estimate = (outcomeId: string, stake: number): number => {
+    for (const m of markets) {
+      const o = m.outcomes.find((x) => x.id === outcomeId);
+      if (!o) continue;
+      if (m.model === 'pool' && o.poolMinor != null && m.poolTotalMinor != null) {
+        const s = Math.round(stake * 100);
+        return Math.floor((s * (m.poolTotalMinor + s)) / (o.poolMinor + s)) / 100;
+      }
+      return stake * Number(o.odds);
+    }
+    return 0;
+  };
 
   // ---------- markets (public, polled) ----------
   useEffect(() => {
@@ -72,7 +88,7 @@ const App: React.FC = () => {
     };
     load();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, []);
+  }, [marketsKey]);
 
   // ---------- account ----------
   const signOut = useCallback((message?: string) => {
@@ -151,6 +167,7 @@ const App: React.FC = () => {
     await loadProfile();
     if (isAccountOpen) loadAccountData();
     setBoardKey((k) => k + 1);
+    setMarketsKey((k) => k + 1);   // new pool prices and chart straight away
     if (placed > 0 && remaining.length === 0) say('ok', placed === 1 ? 'Prediction locked in.' : `${placed} predictions locked in.`);
     else if (placed > 0) say('err', `${placed} locked in, ${remaining.length} need your attention.`);
     else say('err', 'Nothing was placed. Check the messages on your slip.');
@@ -170,7 +187,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row max-w-[1600px] mx-auto relative overflow-hidden bg-slate-950">
       <aside className="w-full lg:w-20 bg-slate-950 border-r border-slate-900 flex flex-row lg:flex-col items-center py-4 lg:py-8 gap-6 px-4 lg:px-0 sticky top-0 z-50">
-        <img src="/icons/icon-192.png" alt="NitroBet" className="w-10 h-10 rounded-lg shadow-lg shadow-red-500/20" />
+        <img src="/icons/icon-192.png" alt="Apexly" className="w-10 h-10 rounded-lg shadow-lg shadow-red-500/20" />
         <div className="flex flex-row lg:flex-col gap-6 flex-1 items-center">
           {CATEGORIES.map((cat) => (
             <button key={cat.id} onClick={() => setSelectedCategory(cat.id as Category)} className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border border-red-500/50' : 'text-slate-500 hover:text-slate-300'}`}>{cat.icon}</button>
@@ -188,9 +205,9 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 lg:p-8 space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl lg:text-5xl font-racing font-black tracking-tighter italic uppercase text-white">Nitro<span className="text-red-600">Bet</span></h1>
+            <h1 className="text-3xl lg:text-5xl font-racing font-black tracking-tighter italic uppercase text-white">Apex<span className="text-red-600">ly</span></h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2 italic flex items-center gap-2">
-              {profile?.ghostMode ? <span className="text-indigo-500 animate-pulse">👻 GHOST MODE ON</span> : 'Precision. Adrenaline. Glory.'}
+              {profile?.ghostMode ? <span className="text-indigo-500 animate-pulse">👻 GHOST MODE ON</span> : 'The Net Race'}
             </p>
             <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[8px] font-black uppercase tracking-widest text-emerald-400">Lite - free to play - points have no cash value</span>
           </div>
@@ -249,6 +266,7 @@ const App: React.FC = () => {
                   <DriverCard key={driver.id} driver={driver} onBet={handlePick} />
                 ))}
               </div>
+              {m.model === 'pool' && <div className="mt-4"><MarketChart market={m} /></div>}
             </section>
           ))
         )}
@@ -282,6 +300,7 @@ const App: React.FC = () => {
       <aside className="w-full lg:w-[400px] p-4 lg:p-8 bg-slate-950 border-l border-slate-900 sticky top-0 h-fit lg:h-screen lg:overflow-y-auto">
         <div className="space-y-8">
           <PredictionSlip
+            estimate={estimate}
             items={slip}
             balance={balanceNum}
             placing={placing}

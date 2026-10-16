@@ -42,7 +42,7 @@ const AuthModal: React.FC<Props> = ({ onClose, onAuthed, initialMode = 'register
       <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onClick={onClose}></div>
       <div className="relative w-full max-w-md max-h-full overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl animate-fade-in">
         <div className="relative h-32 overflow-hidden rounded-t-2xl bg-slate-950">
-          <img src="/brand/hero.jpg" alt="NitroBet" className="w-full h-full object-cover opacity-80" />
+          <img src="/brand/hero.jpg" alt="Apexly" className="w-full h-full object-cover opacity-80" />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
           <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-900/80 text-slate-300 hover:text-white" aria-label="Close">✕</button>
         </div>
@@ -75,7 +75,7 @@ const AuthModal: React.FC<Props> = ({ onClose, onAuthed, initialMode = 'register
               </div>
               <label className="flex items-start gap-3 text-[11px] text-slate-400 leading-snug cursor-pointer">
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-red-600" />
-                <span>I am 18 or older. I understand NitroBet Lite is a free game: points have no cash value and cannot be withdrawn.</span>
+                <span>I am 18 or older. I understand Apexly Lite is a free game: points have no cash value and cannot be withdrawn.</span>
               </label>
             </>
           )}

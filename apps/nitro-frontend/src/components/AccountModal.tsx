@@ -57,7 +57,7 @@ const AccountModal: React.FC<Props> = ({ profile, wagers, ledger, onClose, onSig
         {/* Balance */}
         <div className="p-8 bg-gradient-to-br from-red-600 to-red-900 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 carbon-bg"></div>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 mb-1 relative z-10">Nitro Points</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60 mb-1 relative z-10">Apex Points</p>
           <h2 className="text-4xl font-racing font-black text-white italic relative z-10">{fmtPts(profile.balance)}</h2>
           <span className="relative z-10 inline-block mt-2 px-2 py-0.5 rounded-full bg-black/30 border border-white/20 text-[8px] font-black uppercase tracking-widest text-white/80">Free to play - no cash value</span>
         </div>
@@ -85,7 +85,7 @@ const AccountModal: React.FC<Props> = ({ profile, wagers, ledger, onClose, onSig
                 </ul>
               </div>
               <div className="bg-slate-950 border border-dashed border-indigo-500/40 rounded-xl p-4 text-center">
-                <p className="text-xs font-black uppercase text-indigo-300 tracking-widest">NitroBet Full - coming soon</p>
+                <p className="text-xs font-black uppercase text-indigo-300 tracking-widest">Apexly Full - coming soon</p>
                 <p className="text-[10px] text-slate-500 mt-1">Connect a wallet and predict on-chain once the Full tier launches.</p>
               </div>
             </div>
@@ -112,7 +112,7 @@ const AccountModal: React.FC<Props> = ({ profile, wagers, ledger, onClose, onSig
                       <div className="text-right">
                         <p className="text-[8px] text-slate-600 uppercase font-black">{w.status === 'won' ? 'Returned' : w.status === 'lost' ? 'Lost' : w.status === 'void' ? 'Refunded' : 'Potential'}</p>
                         <p className={`text-sm font-racing font-black ${w.status === 'won' ? 'text-green-500' : w.status === 'lost' ? 'text-slate-500' : 'text-yellow-400'}`}>
-                          {w.status === 'lost' ? '0.00' : fmtPts(w.status === 'void' ? w.stake : w.potentialPayout)}
+                          {w.status === 'lost' ? '0.00' : fmtPts(w.status === 'void' ? w.stake : w.status === 'won' ? (w.payout ?? w.potentialPayout) : w.potentialPayout)}
                         </p>
                       </div>
                     </div>

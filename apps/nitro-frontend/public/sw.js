@@ -1,7 +1,7 @@
-// NitroBet service worker. It lets the app install on a phone and open faster.
+// Apexly service worker. It lets the app install on a phone and open faster.
 // It never touches API calls (they go to another origin) and never caches the page itself,
 // so a new deploy shows up on the next visit instead of an old copy.
-const CACHE = 'nitrobet-static-v1';
+const CACHE = 'apexly-static-v1';
 const PRECACHE = ['/icons/icon-192.png', '/icons/icon-512.png', '/logo.png'];
 
 self.addEventListener('install', (event) => {

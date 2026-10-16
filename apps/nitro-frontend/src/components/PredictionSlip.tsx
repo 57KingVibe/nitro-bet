@@ -11,13 +11,14 @@ interface Props {
   onRemove: (outcomeId: string) => void;
   onClear: () => void;
   onPlace: () => void;
+  estimate: (outcomeId: string, stake: number) => number;   // estimated return if it wins
 }
 
 const trendColor = (t: SlipItem['trend']) => (t === 'up' ? 'border-red-500' : t === 'down' ? 'border-green-500' : 'border-slate-500');
 
-const PredictionSlip: React.FC<Props> = ({ items, balance, placing, ghostMode, onStake, onRemove, onClear, onPlace }) => {
+const PredictionSlip: React.FC<Props> = ({ items, balance, placing, ghostMode, onStake, onRemove, onClear, onPlace, estimate }) => {
   const total = items.reduce((a, i) => a + i.stake, 0);
-  const potential = items.reduce((a, i) => a + i.stake * i.odds, 0);
+  const potential = items.reduce((a, i) => a + estimate(i.outcomeId, i.stake), 0);
   const insufficient = balance !== null && total > balance;
 
   if (items.length === 0) {
@@ -60,7 +61,7 @@ const PredictionSlip: React.FC<Props> = ({ items, balance, placing, ghostMode, o
                   className="w-20 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-bold text-white focus:outline-none focus:border-red-500"
                 />
               </label>
-              <span className="text-[10px] text-green-400 font-bold uppercase">Win: {fmtPts(it.stake * it.odds)}</span>
+              <span className="text-[10px] text-green-400 font-bold uppercase">Est. win: {fmtPts(estimate(it.outcomeId, it.stake))}</span>
             </div>
             {it.error && <p className="mt-2 text-[10px] text-red-400 font-bold italic">{it.error}</p>}
           </div>

@@ -19,6 +19,7 @@ import streamRouter from './routes/stream.js';
 import authRouter from './routes/auth.js';
 import meRouter from './routes/me.js';
 import marketsRouter from './routes/markets.js';
+import chartRouter from './routes/chart.js';
 import wagersRouter from './routes/wagers.js';
 import adminRouter from './routes/admin.js';
 import leaderboardRouter from './routes/leaderboard.js';
@@ -51,6 +52,7 @@ app.use(
 
 // Polling endpoint with its own limiter: mounted BEFORE the global limiter on purpose.
 app.use('/api/stream', streamRouter);
+app.use('/api/markets', chartRouter);   // own limiter; falls through to the markets list below
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
