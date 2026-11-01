@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { CATEGORIES, MOCK_RACES, MOCK_RESULTS } from './constants';
 import { Category, Driver, SlipItem } from './types';
 import {
-  api, ApiError, Market, Profile, WagerRow, LedgerEntry,
+  api, ApiError, Market, Profile, WagerRow, LedgerEntry, PublicConfig,
   getToken, clearToken, isSessionError, friendlyError, fmtPts,
 } from './api';
 import { buildCards, PrevOdds } from './lib/cards';
@@ -14,6 +14,7 @@ import AccountModal from './components/AccountModal';
 import AuthModal from './components/AuthModal';
 import Leaderboard from './components/Leaderboard';
 import InstallCard from './components/InstallCard';
+import SocialLinks from './components/SocialLinks';
 import MarketChart from './components/MarketChart';
 
 type SortOrder = 'none' | 'asc' | 'desc';
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
   const [toast, setToast] = useState<Toast>(null);
+  const [config, setConfig] = useState<PublicConfig | null>(null);
 
   const say = useCallback((kind: 'ok' | 'err', text: string) => {
     setToast({ kind, text });
@@ -60,6 +62,18 @@ const App: React.FC = () => {
     }
     return 0;
   };
+
+  // ---------- public config (Google client id, social links), fetched once; one retry if the server was asleep ----------
+  useEffect(() => {
+    let cancelled = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    const load = (again: boolean) => {
+      api.config().then((c) => { if (!cancelled) setConfig(c); })
+        .catch(() => { if (!cancelled && again) retry = setTimeout(() => load(false), 8000); });
+    };
+    load(true);
+    return () => { cancelled = true; if (retry) clearTimeout(retry); };
+  }, []);
 
   // ---------- markets (public, polled) ----------
   useEffect(() => {
@@ -315,18 +329,19 @@ const App: React.FC = () => {
             <p className="text-[10px] text-slate-400 leading-relaxed mt-3 uppercase">Free points - real race results - weekly leaderboard</p>
           </div>
           <InstallCard />
+          <SocialLinks links={config?.social} />
         </div>
       </aside>
 
       {isAccountOpen && profile && (
         <AccountModal
-          profile={profile} wagers={wagers} ledger={ledger}
+          profile={profile} wagers={wagers} ledger={ledger} config={config}
           onClose={() => setIsAccountOpen(false)}
           onSignOut={() => signOut()}
           onToggleGhost={toggleGhost}
         />
       )}
-      {isAuthOpen && <AuthModal onClose={() => setIsAuthOpen(false)} onAuthed={onAuthed} />}
+      {isAuthOpen && <AuthModal onClose={() => setIsAuthOpen(false)} onAuthed={onAuthed} config={config} />}
 
       {toast && (
         <div role="status" className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] max-w-[90%] px-4 py-3 rounded-xl text-xs font-bold shadow-2xl border ${toast.kind === 'ok' ? 'bg-emerald-900/90 border-emerald-500/40 text-emerald-100' : 'bg-red-950/90 border-red-500/40 text-red-100'}`}>

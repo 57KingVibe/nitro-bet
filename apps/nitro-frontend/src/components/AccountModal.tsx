@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Profile, WagerRow, LedgerEntry, fmtPts } from '../api';
+import { Profile, WagerRow, LedgerEntry, PublicConfig, fmtPts } from '../api';
 import InstallCard from './InstallCard';
+import ReferralCard from './ReferralCard';
+import WalletCard from './WalletCard';
 
 interface Props {
   profile: Profile;
   wagers: WagerRow[] | null;
   ledger: LedgerEntry[] | null;
+  config?: PublicConfig | null;
   onClose: () => void;
   onSignOut: () => void;
   onToggleGhost: (next: boolean) => void;
@@ -84,6 +87,8 @@ const AccountModal: React.FC<Props> = ({ profile, wagers, ledger, onClose, onSig
                   <li>Points are for fun: no deposits, no withdrawals, no cash value.</li>
                 </ul>
               </div>
+              <ReferralCard />
+              <WalletCard />
               <div className="bg-slate-950 border border-dashed border-indigo-500/40 rounded-xl p-4 text-center">
                 <p className="text-xs font-black uppercase text-indigo-300 tracking-widest">Apexly Full - coming soon</p>
                 <p className="text-[10px] text-slate-500 mt-1">Connect a wallet and predict on-chain once the Full tier launches.</p>

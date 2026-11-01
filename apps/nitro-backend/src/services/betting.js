@@ -5,6 +5,7 @@ import { validateWager, planSettlement, planVoid, assertRealMoneyReady } from '.
 import { poolState, estimateReturnMinor, planPoolSettlement } from '../lib/pool.js';
 import { centiToOdds, formatMinor } from '../lib/money.js';
 import { activeCurrency, getBalanceMinor } from './wallet.js';
+import { payReferralBonuses } from './referral.js';
 
 // pg returns BIGINT as strings; convert to numbers (safe: amounts stay far below 2^53).
 export const mapWager = (r) => ({
@@ -144,8 +145,9 @@ export async function settleMarket({ marketId, winningOutcomeId, actor }) {
       }
     }
     await client.query("UPDATE markets SET status = 'settled', winning_outcome_id = $2, settled_at = now() WHERE id = $1", [marketId, winningOutcomeId]);
-    await audit(client, actor, 'market.settle', { marketId, winningOutcomeId, wagers: plan.length, paidOutMinor });
-    return { marketId, winningOutcomeId, wagersSettled: plan.length, paidOutMinor };
+    const referralsPaid = await payReferralBonuses(client, plan.map((i) => i.playerId));
+    await audit(client, actor, 'market.settle', { marketId, winningOutcomeId, wagers: plan.length, paidOutMinor, referralsPaid });
+    return { marketId, winningOutcomeId, wagersSettled: plan.length, paidOutMinor, referralsPaid };
   });
 }
 

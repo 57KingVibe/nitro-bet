@@ -8,6 +8,8 @@ import { seedsFromOdds } from '../lib/pool.js';
 import { parse } from '../lib/validate.js';
 import { requireAdminKey } from '../middleware/adminKey.js';
 import { settleMarket, voidMarket, closeMarket } from '../services/betting.js';
+import { getStats, listMarketsAdmin } from '../services/stats.js';
+import { getAdminWinners } from '../services/leaderboard.js';
 
 const router = Router();
 router.use(requireAdminKey);
@@ -63,6 +65,18 @@ router.post('/markets/:id/settle', async (req, res, next) => {
     const { winningOutcomeId } = parse(z.object({ winningOutcomeId: z.string().uuid() }), req.body);
     res.json(await settleMarket({ marketId: id, winningOutcomeId, actor: req.actor }));
   } catch (err) { next(err); }
+});
+
+// ---- operator views (read-only) ----
+router.get('/stats', async (req, res, next) => { try { res.json(await getStats()); } catch (err) { next(err); } });
+router.get('/markets', async (req, res, next) => { try { res.json({ markets: await listMarketsAdmin() }); } catch (err) { next(err); } });
+const WinnersQuery = z.object({
+  period: z.enum(['week', 'all']).default('week'),
+  weeksAgo: z.coerce.number().int().min(0).max(52).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});
+router.get('/winners', async (req, res, next) => {
+  try { res.json(await getAdminWinners(parse(WinnersQuery, req.query))); } catch (err) { next(err); }
 });
 
 export default router;

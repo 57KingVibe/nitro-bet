@@ -26,6 +26,10 @@ export interface LeaderboardEntry { rank: number; name: string; net: string; net
 export interface Leaderboard { period: 'week' | 'all'; endsAt: string | null; prizesEnabled: boolean; minSettled: number; entries: LeaderboardEntry[] }
 export interface MyRank { period: string; ranked: boolean; rank?: number; net?: string; predictions?: number }
 export interface AuthResult { token: string; player: { id: string; email: string; displayName: string } }
+export interface NeedsSignup { needsSignup: true; email: string; name: string }
+export interface PublicConfig { googleClientId: string | null; social: Record<string, string>; referral: { bonus: string; maxRewards: number }; minAge: number }
+export interface ReferralSummary { code: string; invited: number; rewarded: number; pending: number; bonus: string; maxRewards: number }
+export interface WalletInfo { address: string | null }
 
 // ---------- errors ----------
 export class ApiError extends Error {
@@ -53,6 +57,12 @@ export function friendlyError(e: unknown): string {
     case 'UNDERAGE': return 'You must be 18 or older to join.';
     case 'EMAIL_TAKEN': return 'That email already has an account. Try signing in.';
     case 'BAD_CREDENTIALS': return 'Wrong email or password.';
+    case 'USE_GOOGLE': return 'This account uses Google. Tap "Continue with Google".';
+    case 'EMAIL_TAKEN_PASSWORD': return 'That email already has a password account. Sign in with your password.';
+    case 'BAD_GOOGLE_TOKEN': return 'Google sign-in did not work. Please try again.';
+    case 'WALLET_TAKEN': return 'That wallet is already linked to another account.';
+    case 'BAD_SIGNATURE': return 'The wallet signature did not match. Please try again.';
+    case 'CHALLENGE_EXPIRED': return 'That took too long. Please try again.';
     case 'VALIDATION': return e.details?.[0]?.message ? `Check your details: ${e.details[0].message}` : 'Please check what you entered.';
     case 'INSUFFICIENT_FUNDS': return 'Not enough points.';
     case 'ODDS_CHANGED': return 'The odds changed. Check the new price and confirm again.';
@@ -99,7 +109,14 @@ export const api = {
   chart: (marketId: string, interval: '5m' | '15m' | '1h' | '1d') => request<Chart>(`/api/markets/${marketId}/chart?interval=${interval}`),
   leaderboard: (period: 'week' | 'all') => request<Leaderboard>(`/api/leaderboard?period=${period}`),
   myRank: (period: 'week' | 'all') => request<MyRank>(`/api/leaderboard/me?period=${period}`, { auth: true }),
-  register: (b: { email: string; password: string; displayName: string; dateOfBirth: string }) =>
+  config: () => request<PublicConfig>('/api/config'),
+  google: (b: { credential: string; dateOfBirth?: string; ref?: string }) =>
+    request<AuthResult | NeedsSignup>('/api/auth/google', { method: 'POST', body: b }),
+  referral: () => request<ReferralSummary>('/api/me/referral', { auth: true }),
+  wallet: () => request<WalletInfo>('/api/me/wallet', { auth: true }),
+  walletChallenge: (address: string) => request<{ message: string }>('/api/me/wallet/challenge', { method: 'POST', body: { address }, auth: true }),
+  walletLink: (address: string, signature: string) => request<{ address: string }>('/api/me/wallet', { method: 'POST', body: { address, signature }, auth: true }),
+  register: (b: { email: string; password: string; displayName: string; dateOfBirth: string; ref?: string }) =>
     request<AuthResult>('/api/auth/register', { method: 'POST', body: b }),
   login: (b: { email: string; password: string }) => request<AuthResult>('/api/auth/login', { method: 'POST', body: b }),
   me: () => request<Profile>('/api/me', { auth: true }),

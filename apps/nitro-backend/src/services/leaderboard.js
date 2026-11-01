@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { formatMinor } from '../lib/money.js';
 import { weekBounds, publicName } from '../lib/leaderboard.js';
 import { activeCurrency } from './wallet.js';
+import { toChecksumAddress } from '../lib/eth.js';
 
 // Net points = payouts received minus stakes, over predictions that have been settled.
 const SCORES_SQL = `
@@ -43,4 +44,29 @@ export async function getMyRank(playerId, period = 'week') {
     [activeCurrency(), from, to, env.LEADERBOARD_MIN_SETTLED, playerId]);
   if (!rows[0]) return { period, ranked: false };
   return { period, ranked: true, rank: rows[0].rank, netMinor: Number(rows[0].net_minor), net: formatMinor(Number(rows[0].net_minor)), predictions: rows[0].settled };
+}
+
+/** Operator view of the winners: real names, emails and linked wallets so prizes can be sent by hand. Admin routes only. */
+export async function getAdminWinners({ period = 'week', weeksAgo = 0, limit = 10 } = {}) {
+  let from, to;
+  if (period === 'all') { from = new Date(0); to = new Date('2100-01-01T00:00:00Z'); }
+  else { ({ start: from, end: to } = weekBounds(new Date(Date.now() - weeksAgo * 7 * 86400000))); }
+  const { rows } = await pool.query(
+    `SELECT p.id, p.email, p.display_name, p.created_at AS joined, pw.address,
+            SUM(CASE WHEN w.status = 'won' THEN COALESCE(w.payout_minor, w.potential_payout_minor) - w.stake_minor ELSE -w.stake_minor END)::bigint AS net_minor,
+            COUNT(*)::int AS settled
+     FROM wagers w JOIN players p ON p.id = w.player_id LEFT JOIN player_wallets pw ON pw.player_id = p.id
+     WHERE w.status IN ('won','lost') AND w.currency = $1 AND w.settled_at >= $2 AND w.settled_at < $3
+     GROUP BY p.id, pw.address
+     HAVING COUNT(*) >= $4
+     ORDER BY net_minor DESC, settled DESC, joined ASC LIMIT $5`,
+    [activeCurrency(), from, to, env.LEADERBOARD_MIN_SETTLED, limit]);
+  return {
+    period, from, to,
+    entries: rows.map((r, i) => ({
+      rank: i + 1, playerId: r.id, displayName: r.display_name, email: r.email,
+      wallet: r.address ? toChecksumAddress(r.address) : null,
+      netMinor: Number(r.net_minor), net: formatMinor(Number(r.net_minor)), predictions: r.settled,
+    })),
+  };
 }

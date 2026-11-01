@@ -23,6 +23,9 @@ const envSchema = z.object({
   SIGNUP_CREDIT_MINOR: z.coerce.number().int().min(0).default(100000),  // 1000.00 play money, play mode only
   JWT_EXPIRES_IN: z.string().default('7d'),
   LITE_POOL_SEED_MINOR: z.coerce.number().int().min(1000).max(100000000).default(100000), // opening house points per pool market (1000.00)
+  GOOGLE_CLIENT_ID: z.string().optional(),                                  // Google sign-in is off until this is set
+  REFERRAL_BONUS_MINOR: z.coerce.number().int().min(0).default(5000),       // 50.00 points to the referrer
+  REFERRAL_MAX_REWARDS: z.coerce.number().int().min(0).default(20),         // rewarded referrals per person
   LEADERBOARD_MIN_SETTLED: z.coerce.number().int().min(1).default(1), // settled predictions needed to appear
   WEEKLY_PRIZE_ENABLED: z.enum(['true', 'false']).default('false'),   // only changes what the UI says; no payout logic exists
 });

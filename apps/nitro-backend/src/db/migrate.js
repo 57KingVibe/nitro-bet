@@ -1,13 +1,18 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { pool } from '../config/db.js';
+import { env } from '../config/env.js';
+import { isPooledUrl } from '../lib/db-url.js';
 
 const DIR = new URL('./migrations/', import.meta.url);
 
 /** Applies each migrations/*.sql file once, in name order, each inside its own transaction. */
 export async function runMigrations() {
+  // A pooled (PgBouncer) connection can hand each statement to a different server connection, so a session lock could be
+  // left behind and block the next boot forever. Skip the lock there; the app runs as one instance.
+  const useLock = !isPooledUrl(env.DATABASE_URL);
   const client = await pool.connect();
   try {
-    await client.query('SELECT pg_advisory_lock(727274)'); // one instance migrates at a time
+    if (useLock) await client.query('SELECT pg_advisory_lock(727274)'); // one instance migrates at a time
     await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
       name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`);
     const { rows } = await client.query('SELECT name FROM schema_migrations');
@@ -29,7 +34,7 @@ export async function runMigrations() {
       }
     }
   } finally {
-    try { await client.query('SELECT pg_advisory_unlock(727274)'); } catch { /* ignore */ }
+    if (useLock) { try { await client.query('SELECT pg_advisory_unlock(727274)'); } catch { /* ignore */ } }
     client.release();
   }
 }

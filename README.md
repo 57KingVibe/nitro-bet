@@ -1,3 +1,25 @@
+# Apexly: moving the database to Neon (Oct 24)
+
+Render's free Postgres expires 2026-10-31. Added: a step-by-step guide (`docs/OPERATIONS.md`, "Move the database to Neon"), `apps/nitro-backend/scripts/move-db.sh` (copies the old database into an empty Neon one, with hidden-typing prompts and a row-count check), and a guard for Neon's pooled address (a warning at boot, and the start-up migration skips its session lock there so it cannot hang a deploy).
+Tested: 36 backend unit tests (one new, for the pooled-address check); `move-db.sh` guard rails with stand-in tools. Not tested: a real dump and restore, and a real Neon connection (no Postgres or internet in my sandbox). Do the guide's step 5 check and keep the Render database until 31 October as a backup.
+
+---
+
+# Apexly: community features are now on the website (Oct 24)
+
+The invite link, Google sign-in, wallet linking and social links built last round are now wired into the page.
+- **Right column:** "Follow us" card under the install card. Only the links you set in Render (`SOCIAL_*_URL`) are shown; with none set, nothing shows.
+- **Account > Points:** below "How Lite works" there are now the **Invite friends** card (your link, Copy / Share, invited / rewarded / waiting counts) and the **Wallet** card (link a wallet by signing a free message; shows "open in MetaMask / Trust Wallet" when the browser has no wallet).
+- **Sign-in box:** when `GOOGLE_CLIENT_ID` is set in Render, a "Continue with Google" button appears above the form with an "or" divider. A first-time Google person must enter a date of birth and tick the 18+ box before the account is made. If Google's script cannot load, the button simply does not appear and email sign-up still works.
+- **Invite codes:** `?ref=CODE` is remembered, removed from the address bar, sent with both email and Google sign-ups, then cleared.
+- The page reads `/api/config` once when it opens (one retry after 8 seconds in case the free server was asleep).
+
+Tested: 35 backend unit tests, and 54 checks in a real browser (`tools/e2e`): the earlier ones plus invite code sent on sign-up, invite card, social links (only configured ones), Google flow with a fake `window.google` (18+ step, under-18 refused, returning person goes straight in), and wallet link with a fake `window.ethereum` signing through the real `lib/eth.js`.
+Not tested: the real Google button and a real wallet app (they need your Google client id and a phone with a wallet). The Google button is drawn by Google, so check its look once after you set `GOOGLE_CLIENT_ID`. Type-checking with `tsc` was not run (React type files were not available offline); the build compiled cleanly with esbuild.
+Run the browser test: `bash tools/e2e/build.sh && node tools/e2e/run.mjs` (see `tools/e2e/README.md`).
+
+---
+
 # Apexly: points-pool markets and the candle chart (Oct 14)
 
 New Lite markets are a **points pool** instead of fixed odds. This is the free rehearsal of the Full tier's pool contract.

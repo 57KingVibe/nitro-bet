@@ -1,5 +1,6 @@
 import pkg from 'pg';
 import { env } from './env.js';
+import { isPooledUrl } from '../lib/db-url.js';
 
 const { Pool } = pkg;
 
@@ -12,6 +13,10 @@ export const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000, // 2s was too tight for a cold free-tier Postgres
 });
+
+if (isPooledUrl(env.DATABASE_URL)) {
+  console.warn('[DB] DATABASE_URL is a Neon POOLED address (host contains "-pooler"). Use the DIRECT address instead: the pooled one can break migrations.');
+}
 
 // An unhandled 'error' event on the pool (e.g. a dropped idle connection) would crash the process.
 pool.on('error', (err) => console.error('[DB] idle client error:', err.message));

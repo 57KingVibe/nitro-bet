@@ -8,6 +8,8 @@ import pinoHttp from 'pino-http';
 import { Server as SocketIOServer } from 'socket.io';
 
 import { env } from './config/env.js';
+import { socialLinks } from './lib/social.js';
+import { formatMinor } from './lib/money.js';
 import { initDb } from './config/db.js';
 import { runMigrations } from './db/migrate.js';
 import { seedDemoMarket } from './db/seed.js';
@@ -80,6 +82,9 @@ app.get('/api/config', (req, res) => {
     minStakeMinor: env.MIN_STAKE_MINOR,
     maxStakeMinor: env.MAX_STAKE_MINOR,
     weeklyPrizeEnabled: env.WEEKLY_PRIZE_ENABLED === 'true',
+    googleClientId: env.GOOGLE_CLIENT_ID || null,
+    social: socialLinks(),
+    referral: { bonus: formatMinor(env.REFERRAL_BONUS_MINOR), maxRewards: env.REFERRAL_MAX_REWARDS },
   });
 });
 
@@ -96,7 +101,7 @@ app.get('/', (req, res) => {
     service: 'nitro-bet-api',
     status: 'ok',
     mode: env.REAL_MONEY_ENABLED === 'true' ? 'real-money' : 'play-money',
-    endpoints: ['/health', '/api/config', '/api/markets', '/api/leaderboard', '/api/stream/unified', '/api/auth/register', '/api/auth/login', '/api/me', '/api/wagers'],
+    endpoints: ['/health', '/api/config', '/api/markets', '/api/leaderboard', '/api/stream/unified', '/api/auth/register', '/api/auth/login', '/api/auth/google', '/api/me', '/api/wagers'],
   });
 });
 
