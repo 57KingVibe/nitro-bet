@@ -16,6 +16,7 @@ import Leaderboard from './components/Leaderboard';
 import InstallCard from './components/InstallCard';
 import SocialLinks from './components/SocialLinks';
 import MarketChart from './components/MarketChart';
+import BottomNav from './components/BottomNav';
 
 type SortOrder = 'none' | 'asc' | 'desc';
 type BottomView = 'upcoming' | 'results';
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   const [bottomView, setBottomView] = useState<BottomView>('upcoming');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [slipOpen, setSlipOpen] = useState(false);   // phone: the slip slides up as a sheet
   const [boardKey, setBoardKey] = useState(0);
   const [toast, setToast] = useState<Toast>(null);
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -107,7 +109,7 @@ const App: React.FC = () => {
   // ---------- account ----------
   const signOut = useCallback((message?: string) => {
     clearToken();
-    setProfile(null); setWagers(null); setLedger(null); setSlip([]); setIsAccountOpen(false);
+    setProfile(null); setWagers(null); setLedger(null); setSlip([]); setSlipOpen(false); setIsAccountOpen(false);
     setBoardKey((k) => k + 1);
     if (message) say('err', message);
   }, [say]);
@@ -158,6 +160,7 @@ const App: React.FC = () => {
       };
       return existing ? prev.map((i) => (i.outcomeId === driver.id ? item : i)) : [...prev, item];
     });
+    setSlipOpen(true);
   };
 
   const handlePlace = async () => {
@@ -182,6 +185,7 @@ const App: React.FC = () => {
     if (isAccountOpen) loadAccountData();
     setBoardKey((k) => k + 1);
     setMarketsKey((k) => k + 1);   // new pool prices and chart straight away
+    if (remaining.length === 0) setSlipOpen(false);
     if (placed > 0 && remaining.length === 0) say('ok', placed === 1 ? 'Prediction locked in.' : `${placed} predictions locked in.`);
     else if (placed > 0) say('err', `${placed} locked in, ${remaining.length} need your attention.`);
     else say('err', 'Nothing was placed. Check the messages on your slip.');
@@ -199,10 +203,10 @@ const App: React.FC = () => {
   const avatar = profile ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.displayName)}` : '';
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row max-w-[1600px] mx-auto relative overflow-hidden bg-slate-950">
-      <aside className="w-full lg:w-20 bg-slate-950 border-r border-slate-900 flex flex-row lg:flex-col items-center py-4 lg:py-8 gap-6 px-4 lg:px-0 sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col lg:flex-row max-w-[1600px] mx-auto relative overflow-hidden bg-slate-950 pb-20 lg:pb-0">
+      <aside className="hidden lg:flex w-20 bg-slate-950 border-r border-slate-900 flex-col items-center py-8 gap-6 sticky top-0 z-50">
         <img src="/icons/icon-192.png" alt="Apexly" className="w-10 h-10 rounded-lg shadow-lg shadow-red-500/20" />
-        <div className="flex flex-row lg:flex-col gap-6 flex-1 items-center">
+        <div className="flex flex-col gap-6 flex-1 items-center">
           {CATEGORIES.map((cat) => (
             <button key={cat.id} onClick={() => setSelectedCategory(cat.id as Category)} className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border border-red-500/50' : 'text-slate-500 hover:text-slate-300'}`}>{cat.icon}</button>
           ))}
@@ -219,7 +223,10 @@ const App: React.FC = () => {
       <main className="flex-1 p-4 lg:p-8 space-y-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl lg:text-5xl font-racing font-black tracking-tighter italic uppercase text-white">Apex<span className="text-red-600">ly</span></h1>
+            <div className="flex items-center gap-3">
+              <img src="/icons/icon-192.png" alt="" className="lg:hidden w-10 h-10 rounded-lg shadow-lg shadow-red-500/20" />
+              <h1 className="text-3xl lg:text-5xl font-racing font-black tracking-tighter italic uppercase text-white">Apex<span className="text-red-600">ly</span></h1>
+            </div>
             <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] mt-2 italic flex items-center gap-2">
               {profile?.ghostMode ? <span className="text-indigo-500 animate-pulse">👻 GHOST MODE ON</span> : 'The Net Race'}
             </p>
@@ -311,19 +318,21 @@ const App: React.FC = () => {
         </section>
       </main>
 
-      <aside className="w-full lg:w-[400px] p-4 lg:p-8 bg-slate-950 border-l border-slate-900 sticky top-0 h-fit lg:h-screen lg:overflow-y-auto">
+      <aside className="w-full lg:w-[400px] p-4 lg:p-8 bg-slate-950 border-l border-slate-900 lg:sticky lg:top-0 h-fit lg:h-screen lg:overflow-y-auto">
         <div className="space-y-8">
-          <PredictionSlip
-            estimate={estimate}
-            items={slip}
-            balance={balanceNum}
-            placing={placing}
-            ghostMode={!!profile?.ghostMode}
-            onStake={(id, stake) => setSlip((p) => p.map((i) => (i.outcomeId === id ? { ...i, stake, error: undefined } : i)))}
-            onRemove={(id) => setSlip((p) => p.filter((i) => i.outcomeId !== id))}
-            onClear={() => setSlip([])}
-            onPlace={handlePlace}
-          />
+          <div className="hidden lg:block">
+            <PredictionSlip
+              estimate={estimate}
+              items={slip}
+              balance={balanceNum}
+              placing={placing}
+              ghostMode={!!profile?.ghostMode}
+              onStake={(id, stake) => setSlip((p) => p.map((i) => (i.outcomeId === id ? { ...i, stake, error: undefined } : i)))}
+              onRemove={(id) => setSlip((p) => p.filter((i) => i.outcomeId !== id))}
+              onClear={() => setSlip([])}
+              onPlace={handlePlace}
+            />
+          </div>
           <div className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-6 text-center">
             <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest">How it works</p>
             <p className="text-[10px] text-slate-400 leading-relaxed mt-3 uppercase">Free points - real race results - weekly leaderboard</p>
@@ -332,6 +341,42 @@ const App: React.FC = () => {
           <SocialLinks links={config?.social} />
         </div>
       </aside>
+
+      <BottomNav
+        categories={CATEGORIES.map((c) => ({ id: c.id, icon: c.icon, label: c.name }))}
+        selected={selectedCategory}
+        slipCount={slip.length}
+        slipOpen={slipOpen}
+        signedIn={!!profile}
+        avatar={avatar}
+        ghostMode={!!profile?.ghostMode}
+        onSelect={(id) => { setSelectedCategory(id as Category); setSlipOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        onSlip={() => setSlipOpen((o) => !o)}
+        onProfile={() => { setSlipOpen(false); if (profile) openAccount(); else setIsAuthOpen(true); }}
+      />
+
+      {slipOpen && (
+        <div className="lg:hidden fixed inset-0 z-[90] flex items-end" role="dialog" aria-modal="true" aria-label="Prediction slip">
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSlipOpen(false)}></div>
+          <div className="relative w-full max-h-[88vh] overflow-y-auto rounded-t-2xl bg-slate-950 border-t border-slate-800 px-4 pt-3 pb-24 animate-slide-up">
+            <div className="flex items-center justify-between mb-3">
+              <span className="w-10 h-1 rounded bg-slate-700"></span>
+              <button type="button" onClick={() => setSlipOpen(false)} className="text-slate-400 hover:text-white text-sm font-black px-2" aria-label="Close slip">✕</button>
+            </div>
+            <PredictionSlip
+              estimate={estimate}
+              items={slip}
+              balance={balanceNum}
+              placing={placing}
+              ghostMode={!!profile?.ghostMode}
+              onStake={(id, stake) => setSlip((p) => p.map((i) => (i.outcomeId === id ? { ...i, stake, error: undefined } : i)))}
+              onRemove={(id) => setSlip((p) => p.filter((i) => i.outcomeId !== id))}
+              onClear={() => setSlip([])}
+              onPlace={handlePlace}
+            />
+          </div>
+        </div>
+      )}
 
       {isAccountOpen && profile && (
         <AccountModal
@@ -344,7 +389,7 @@ const App: React.FC = () => {
       {isAuthOpen && <AuthModal onClose={() => setIsAuthOpen(false)} onAuthed={onAuthed} config={config} />}
 
       {toast && (
-        <div role="status" className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] max-w-[90%] px-4 py-3 rounded-xl text-xs font-bold shadow-2xl border ${toast.kind === 'ok' ? 'bg-emerald-900/90 border-emerald-500/40 text-emerald-100' : 'bg-red-950/90 border-red-500/40 text-red-100'}`}>
+        <div role="status" className={`fixed bottom-24 lg:bottom-4 left-1/2 -translate-x-1/2 z-[200] max-w-[90%] px-4 py-3 rounded-xl text-xs font-bold shadow-2xl border ${toast.kind === 'ok' ? 'bg-emerald-900/90 border-emerald-500/40 text-emerald-100' : 'bg-red-950/90 border-red-500/40 text-red-100'}`}>
           {toast.text}
         </div>
       )}

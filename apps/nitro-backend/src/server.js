@@ -13,6 +13,7 @@ import { formatMinor } from './lib/money.js';
 import { initDb } from './config/db.js';
 import { runMigrations } from './db/migrate.js';
 import { seedDemoMarket } from './db/seed.js';
+import { startAutoSettle } from './services/autosettle.js';
 import { geoBlock } from './middleware/compliance.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -129,6 +130,7 @@ const startServer = async () => {
     }
     server.listen(env.PORT, '0.0.0.0', () => {
       console.log(`[CORE] Nitro-Bet Engine live on port ${env.PORT} [${env.NODE_ENV}]`);
+      startAutoSettle();
     });
   } catch (err) {
     console.error('[CRITICAL] Boot failed:', err);

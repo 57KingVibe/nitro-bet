@@ -19,6 +19,7 @@ const CreateSchema = z.object({
   sport: z.string().trim().min(2).max(20).default('F1'),
   closesAt: z.string().datetime().optional(),
   model: z.enum(['pool', 'fixed']).default('pool'),
+  autoSettle: z.enum(['f1_race_winner']).optional(),          // settle from the official OpenF1 race result
   seedPoints: z.union([z.string(), z.number()]).optional(),   // opening house points for a pool market, e.g. 1000
   outcomes: z.array(z.object({ label: z.string().trim().min(1).max(60), odds: z.union([z.string(), z.number()]) })).min(2).max(30),
 });
@@ -39,8 +40,8 @@ router.post('/markets', async (req, res, next) => {
     }
     const market = await withTx(async (client) => {
       const { rows } = await client.query(
-        'INSERT INTO markets (sport, title, closes_at, model) VALUES ($1,$2,$3,$4) RETURNING id, title, status, model',
-        [body.sport, body.title, body.closesAt ?? null, body.model]);
+        'INSERT INTO markets (sport, title, closes_at, model, auto_settle) VALUES ($1,$2,$3,$4,$5) RETURNING id, title, status, model, auto_settle',
+        [body.sport, body.title, body.closesAt ?? null, body.model, body.autoSettle ?? null]);
       for (const [i, o] of outcomes.entries()) {
         await client.query('INSERT INTO outcomes (market_id, label, odds_centi, seed_minor, sort) VALUES ($1,$2,$3,$4,$5)', [rows[0].id, o.label, o.odds, seeds[i], i]);
       }

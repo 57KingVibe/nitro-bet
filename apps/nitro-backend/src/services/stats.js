@@ -34,13 +34,13 @@ export async function getStats() {
 
 export async function listMarketsAdmin() {
   const { rows } = await pool.query(
-    `SELECT m.id, m.title, m.status, m.model, m.created_at, (SELECT COUNT(*) FROM wagers w WHERE w.market_id = m.id)::int AS predictions
+    `SELECT m.id, m.title, m.status, m.model, m.auto_settle, m.created_at, (SELECT COUNT(*) FROM wagers w WHERE w.market_id = m.id)::int AS predictions
      FROM markets m ORDER BY m.created_at DESC LIMIT 20`);
   const { rows: outs } = rows.length
     ? await pool.query('SELECT market_id, id, label FROM outcomes WHERE market_id = ANY($1::uuid[]) ORDER BY sort', [rows.map((r) => r.id)])
     : { rows: [] };
   return rows.map((m) => ({
-    id: m.id, title: m.title, status: m.status, model: m.model, createdAt: m.created_at, predictions: m.predictions,
+    id: m.id, title: m.title, status: m.status, model: m.model, autoSettle: m.auto_settle, createdAt: m.created_at, predictions: m.predictions,
     outcomes: outs.filter((o) => o.market_id === m.id).map((o) => ({ id: o.id, label: o.label })),
   }));
 }

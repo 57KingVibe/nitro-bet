@@ -1,3 +1,17 @@
+# Apexly: races settle themselves (Nov 4)
+
+Predictions never showed an outcome because settling was only ever done by hand (`ops.sh settle`). Now a market made with `ops.sh create` carries `auto_settle = 'f1_race_winner'` (migration `005`) and a small job in the API does the rest:
+- finds the first OpenF1 **Race** session (Sprints ignored) that ends after the market was created;
+- **closes predictions at lights out**;
+- 2 hours after the race ends (`AUTO_SETTLE_DELAY_MIN`) settles with the single driver OpenF1 lists in P1, matched to an outcome by full name, then by a unique surname (so "Kimi Antonelli" matches "Andrea Kimi ANTONELLI");
+- if anything is unclear (no result, winner not an outcome, two matches) it changes nothing and logs one `[AUTO]` line. Old markets and markets without the tag stay manual. It never runs in real-money mode.
+- `ops.sh close | void | settle` now accept a market id, for when two markets are open.
+
+Tested: 14 new unit tests (name matching, race choice, phases, the whole job with fakes), all 50 backend tests pass. **Not tested:** against the live OpenF1 (my sandbox has no internet; the `/session_result` field names come from its docs) and the new SQL against a real Postgres. The first real race is the test: watch the Render log for `[AUTO]` lines and keep `ops.sh settle` as the fallback.
+Not done in this zip: bet-slip pop-up, bottom navigation, separate market pages.
+
+---
+
 # Apexly: moving the database to Neon (Oct 24)
 
 Render's free Postgres expires 2026-10-31. Added: a step-by-step guide (`docs/OPERATIONS.md`, "Move the database to Neon"), `apps/nitro-backend/scripts/move-db.sh` (copies the old database into an empty Neon one, with hidden-typing prompts and a row-count check), and a guard for Neon's pooled address (a warning at boot, and the start-up migration skips its session lock there so it cannot hang a deploy).

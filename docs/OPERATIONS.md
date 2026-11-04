@@ -22,13 +22,15 @@ Winners' emails are private. Never post that output anywhere.
 ## The race-week routine
 | When | Command | What it does |
 |---|---|---|
-| Start of race week | `bash apps/nitro-backend/scripts/ops.sh create` | Opens the market. Add a title: `ops.sh create "Monaco GP: Winner"` |
+| Start of race week | `bash apps/nitro-backend/scripts/ops.sh create` | Opens the market. Add a title: `ops.sh create "Monaco GP: Winner"`. It then **closes at lights out and settles itself** about 2 hours after the race (from the official OpenF1 result). The steps below are only needed by hand |
 | Before the race starts | `bash apps/nitro-backend/scripts/ops.sh close` | Stops new predictions (so nobody predicts after seeing the result) |
 | After the official result | `bash apps/nitro-backend/scripts/ops.sh settle "Max Verstappen"` | Pays the winners and updates the leaderboard. Type the winner exactly as listed. It asks you to type yes. |
 | Race cancelled | `bash apps/nitro-backend/scripts/ops.sh void` | Refunds everyone |
 | Any time | `bash apps/nitro-backend/scripts/ops.sh markets` | Lists markets, status and ids |
 
 Always take the winner from the official classification, not from social media. Settling cannot be undone.
+
+**Automatic settlement.** Markets made with `ops.sh create` carry an "auto-settles" tag (see `ops.sh markets`). The server checks every 5 minutes: it closes predictions when the race starts, and 2 hours after the race ends it settles with the driver OpenF1 lists in P1. If something is unclear (no result yet, the winner is not one of the outcomes) it does nothing and writes one line to the Render log starting with `[AUTO]`, and you settle or void by hand. Older markets and markets without the tag always stay manual. If two markets are open, add the id from `ops.sh markets`: `ops.sh void <id>`, `ops.sh settle "Name" <id>`, `ops.sh close <id>`.
 
 ## Weekly winners and prizes (manual)
 1. After you settle the last race of the week: `bash apps/nitro-backend/scripts/ops.sh winners week 0`
@@ -62,6 +64,9 @@ The first request after Neon has been idle takes about a second longer (it sleep
 | `REFERRAL_BONUS_MINOR` | Referrer bonus in cents of a point. 5000 = 50 points |
 | `REFERRAL_MAX_REWARDS` | Rewarded referrals per person (default 20) |
 | `PUBLIC_SITE_URL` | Your site address, shown in the wallet signing message |
+| `AUTO_SETTLE_ENABLED` | `true` (default) or `false` to settle everything by hand |
+| `AUTO_SETTLE_DELAY_MIN` | Minutes to wait after the race ends before settling (default 120, so penalties are applied) |
+| `AUTO_SETTLE_INTERVAL_MIN` | How often the server checks (default 5) |
 After changing anything, tap Save, rebuild, and deploy.
 
 ## Turn on Google sign-in (free)

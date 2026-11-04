@@ -28,6 +28,9 @@ const envSchema = z.object({
   REFERRAL_MAX_REWARDS: z.coerce.number().int().min(0).default(20),         // rewarded referrals per person
   LEADERBOARD_MIN_SETTLED: z.coerce.number().int().min(1).default(1), // settled predictions needed to appear
   WEEKLY_PRIZE_ENABLED: z.enum(['true', 'false']).default('false'),   // only changes what the UI says; no payout logic exists
+  AUTO_SETTLE_ENABLED: z.enum(['true', 'false']).default('true'),     // settle opted-in F1 race markets from the OpenF1 result
+  AUTO_SETTLE_DELAY_MIN: z.coerce.number().int().min(0).max(1440).default(120),   // minutes after the race ends (penalties get applied)
+  AUTO_SETTLE_INTERVAL_MIN: z.coerce.number().int().min(1).max(60).default(5),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
