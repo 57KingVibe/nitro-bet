@@ -13,7 +13,7 @@ router.get('/', async (req, res, next) => {
               COALESCE(SUM(w.stake_minor) FILTER (WHERE w.status <> 'void'), 0)::bigint AS staked_minor
        FROM markets m JOIN outcomes o ON o.market_id = m.id
        LEFT JOIN wagers w ON w.outcome_id = o.id
-       WHERE m.status = 'open'
+       WHERE m.status IN ('open', 'closed')
        GROUP BY m.id, o.id
        ORDER BY m.created_at DESC, o.sort ASC`);
 

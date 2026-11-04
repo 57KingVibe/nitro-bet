@@ -22,6 +22,7 @@ Winners' emails are private. Never post that output anywhere.
 ## The race-week routine
 | When | Command | What it does |
 |---|---|---|
+| Another series | `SPORT=WRC bash apps/nitro-backend/scripts/ops.sh create "Rally Finland: Winner" "Driver A:2.50" "Driver B:3.40"` | Use `WRC`, `GT` or `INDY` (the same letters as the bottom bar). These markets are settled by hand with `ops.sh settle`. Only F1 has an automatic result feed |
 | Start of race week | `bash apps/nitro-backend/scripts/ops.sh create` | Opens the market. Add a title: `ops.sh create "Monaco GP: Winner"`. It then **closes at lights out and settles itself** about 2 hours after the race (from the official OpenF1 result). The steps below are only needed by hand |
 | Before the race starts | `bash apps/nitro-backend/scripts/ops.sh close` | Stops new predictions (so nobody predicts after seeing the result) |
 | After the official result | `bash apps/nitro-backend/scripts/ops.sh settle "Max Verstappen"` | Pays the winners and updates the leaderboard. Type the winner exactly as listed. It asks you to type yes. |

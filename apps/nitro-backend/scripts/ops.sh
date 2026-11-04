@@ -36,10 +36,20 @@ case "$cmd" in
   markets)
     api GET /api/admin/markets | jq -r '.markets[] | "\(.status | ascii_upcase)  \(.title)  [\(.model)\(if .autoSettle then ", auto-settles" else ", manual" end)]  \(.predictions) predictions\n   id \(.id)"' ;;
   create)
-    if [ $# -lt 3 ]; then set -- "${1:-Next F1 Race: Winner}" "Max Verstappen:1.59" "Lando Norris:3.56" "Charles Leclerc:5.62" "Oscar Piastri:8.08" "Lewis Hamilton:12.25"; fi
+    # SPORT=WRC (or GT, INDY) opens a market for another series. Those settle by hand. AUTO=0 keeps an F1 market manual too.
+    SPORT="${SPORT:-F1}"
+    if [ $# -lt 3 ]; then
+      if [ "$SPORT" != "F1" ]; then
+        echo "For $SPORT give a title and at least two choices as Name:odds, for example:"
+        echo "  SPORT=$SPORT bash ops.sh create \"Rally Finland: Winner\" \"Driver A:2.50\" \"Driver B:3.40\""
+        exit 1
+      fi
+      set -- "${1:-Next F1 Race: Winner}" "Max Verstappen:1.59" "Lando Norris:3.56" "Charles Leclerc:5.62" "Oscar Piastri:8.08" "Lewis Hamilton:12.25"
+    fi
     title="$1"; shift
     outs=$(for o in "$@"; do jq -n --arg l "${o%:*}" --arg d "${o##*:}" '{label: $l, odds: $d}'; done | jq -s .)
-    api POST /api/admin/markets -d "$(jq -n --arg t "$title" --argjson o "$outs" '{title: $t, outcomes: $o, autoSettle: "f1_race_winner"}')" | jq . ;;
+    api POST /api/admin/markets -d "$(jq -n --arg t "$title" --arg s "$SPORT" --arg a "${AUTO:-1}" --argjson o "$outs" \
+      '{title: $t, sport: $s, outcomes: $o} + (if $s == "F1" and $a != "0" then {autoSettle: "f1_race_winner"} else {} end)')" | jq . ;;
   close)
     WANT_ID="${1:-}"; need_target; ask "Close '$TITLE' (no more predictions)?"; api POST "/api/admin/markets/$MID/close" | jq . ;;
   void)

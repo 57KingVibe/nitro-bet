@@ -6,7 +6,6 @@ import {
   getToken, clearToken, isSessionError, friendlyError, fmtPts,
 } from './api';
 import { buildCards, PrevOdds } from './lib/cards';
-import DriverCard from './components/DriverCard';
 import PredictionSlip from './components/PredictionSlip';
 import LiveTelemetry from './components/LiveTelemetry';
 import RaceResults from './components/RaceResults';
@@ -15,10 +14,10 @@ import AuthModal from './components/AuthModal';
 import Leaderboard from './components/Leaderboard';
 import InstallCard from './components/InstallCard';
 import SocialLinks from './components/SocialLinks';
-import MarketChart from './components/MarketChart';
 import BottomNav from './components/BottomNav';
+import MarketList from './components/MarketList';
+import MarketPage, { SortOrder, MarketTab } from './components/MarketPage';
 
-type SortOrder = 'none' | 'asc' | 'desc';
 type BottomView = 'upcoming' | 'results';
 type Toast = { kind: 'ok' | 'err'; text: string } | null;
 
@@ -41,6 +40,9 @@ const App: React.FC = () => {
   const [bottomView, setBottomView] = useState<BottomView>('upcoming');
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  // Each market has its own page. The browser back button (and the phone back gesture) returns to the list.
+  const [openMarketId, setOpenMarketId] = useState<string | null>(() => (typeof window !== 'undefined' ? window.history.state?.market ?? null : null));
+  const [marketTab, setMarketTab] = useState<MarketTab>('odds');
   const [slipOpen, setSlipOpen] = useState(false);   // phone: the slip slides up as a sheet
   const [boardKey, setBoardKey] = useState(0);
   const [toast, setToast] = useState<Toast>(null);
@@ -64,6 +66,26 @@ const App: React.FC = () => {
     }
     return 0;
   };
+
+  const openMarketPage = (id: string) => {
+    setMarketTab('odds');
+    setOpenMarketId(id);
+    window.history.pushState({ market: id }, '');
+    window.scrollTo({ top: 0 });
+  };
+  const closeMarketPage = () => {
+    if (window.history.state?.market) window.history.back();   // popstate below does the rest
+    else setOpenMarketId(null);
+  };
+  const leaveMarketPage = () => {   // switching series: drop the market page without leaving a stray history entry
+    if (window.history.state?.market) window.history.replaceState(null, '');
+    setOpenMarketId(null);
+  };
+  useEffect(() => {
+    const onPop = () => { setOpenMarketId(window.history.state?.market ?? null); setMarketTab('odds'); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // ---------- public config (Google client id, social links), fetched once; one retry if the server was asleep ----------
   useEffect(() => {
@@ -193,12 +215,9 @@ const App: React.FC = () => {
 
   const balanceNum = profile ? Number(profile.balance) : null;
 
-  const sortCards = (list: Driver[]) => {
-    const copy = [...list];
-    if (sortOrder === 'asc') return copy.sort((a, b) => a.odds - b.odds);
-    if (sortOrder === 'desc') return copy.sort((a, b) => b.odds - a.odds);
-    return copy;
-  };
+  const seriesMarkets = useMemo(() => markets.filter((m) => m.sport.toUpperCase() === selectedCategory), [markets, selectedCategory]);
+  const openMarket = openMarketId ? seriesMarkets.find((m) => m.id === openMarketId) ?? null : null;
+  const pickSeries = (id: string) => { setSelectedCategory(id as Category); leaveMarketPage(); setSlipOpen(false); };
 
   const avatar = profile ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(profile.displayName)}` : '';
 
@@ -208,7 +227,7 @@ const App: React.FC = () => {
         <img src="/icons/icon-192.png" alt="Apexly" className="w-10 h-10 rounded-lg shadow-lg shadow-red-500/20" />
         <div className="flex flex-col gap-6 flex-1 items-center">
           {CATEGORIES.map((cat) => (
-            <button key={cat.id} onClick={() => setSelectedCategory(cat.id as Category)} className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border border-red-500/50' : 'text-slate-500 hover:text-slate-300'}`}>{cat.icon}</button>
+            <button key={cat.id} onClick={() => pickSeries(cat.id)} className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl transition-all ${selectedCategory === cat.id ? 'bg-slate-800 text-white border border-red-500/50' : 'text-slate-500 hover:text-slate-300'}`}>{cat.icon}</button>
           ))}
         </div>
         {profile ? (
@@ -245,14 +264,8 @@ const App: React.FC = () => {
           )}
         </header>
 
-        <LiveTelemetry />
 
-        {selectedCategory !== 'F1' ? (
-          <section className="bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-10 text-center">
-            <p className="font-racing text-sm font-black uppercase tracking-widest text-slate-400">{CATEGORIES.find((c) => c.id === selectedCategory)?.name} markets are coming soon</p>
-            <p className="text-xs text-slate-600 mt-2">Formula 1 is open now.</p>
-          </section>
-        ) : marketsState === 'loading' ? (
+        {marketsState === 'loading' ? (
           <section className="space-y-3 animate-pulse">
             <div className="h-5 w-48 bg-slate-800 rounded"></div>
             <div className="h-24 bg-slate-900 rounded-xl"></div>
@@ -263,38 +276,37 @@ const App: React.FC = () => {
             <p className="text-sm font-bold text-slate-300">Markets are offline right now.</p>
             <p className="text-xs text-slate-500 mt-1">We keep retrying. Pull to refresh if it stays like this.</p>
           </section>
-        ) : markets.length === 0 ? (
-          <section className="bg-slate-900/40 border border-slate-800 rounded-2xl p-8 text-center">
-            <p className="text-sm font-bold text-slate-300">No open markets right now.</p>
-            <p className="text-xs text-slate-500 mt-1">New markets open before each race. Check back soon.</p>
+        ) : openMarket ? (
+          <MarketPage
+            market={openMarket}
+            cards={cards[openMarket.id] ?? []}
+            sortOrder={sortOrder} onSort={setSortOrder}
+            tab={marketTab} onTab={setMarketTab}
+            onBack={closeMarketPage}
+            onBet={handlePick}
+          />
+        ) : seriesMarkets.length === 0 ? (
+          <section className="bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-10 text-center">
+            {selectedCategory === 'F1' ? (
+              <>
+                <p className="text-sm font-bold text-slate-300">No open markets right now.</p>
+                <p className="text-xs text-slate-500 mt-1">New markets open before each race. Check back soon.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-racing text-sm font-black uppercase tracking-widest text-slate-400">{CATEGORIES.find((c) => c.id === selectedCategory)?.name} markets are coming soon</p>
+                <p className="text-xs text-slate-600 mt-2">Formula 1 is open now.</p>
+              </>
+            )}
           </section>
         ) : (
-          markets.map((m) => (
-            <section key={m.id}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <div>
-                  <h2 className="font-racing text-lg font-black uppercase tracking-widest flex items-center gap-2"><span className="w-1 h-6 bg-red-600"></span> {m.title}</h2>
-                  {m.closesAt && <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1 ml-3">Closes {new Date(m.closesAt).toLocaleString()}</p>}
-                </div>
-                <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
-                  <button onClick={() => setSortOrder('none')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase ${sortOrder === 'none' ? 'bg-slate-800 text-white shadow' : 'text-slate-500'}`}>Default</button>
-                  <button onClick={() => setSortOrder('asc')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase ${sortOrder === 'asc' ? 'bg-slate-800 text-white shadow' : 'text-slate-500'}`}>Lowest</button>
-                  <button onClick={() => setSortOrder('desc')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase ${sortOrder === 'desc' ? 'bg-slate-800 text-white shadow' : 'text-slate-500'}`}>Highest</button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sortCards(cards[m.id] ?? []).map((driver) => (
-                  <DriverCard key={driver.id} driver={driver} onBet={handlePick} />
-                ))}
-              </div>
-              {m.model === 'pool' && <div className="mt-4"><MarketChart market={m} /></div>}
-            </section>
-          ))
+          <MarketList markets={seriesMarkets} onOpen={openMarketPage} />
         )}
 
-        <Leaderboard loggedIn={!!profile} refreshKey={boardKey} />
+        {!openMarket && selectedCategory === 'F1' && <LiveTelemetry />}
+        {!openMarket && <Leaderboard loggedIn={!!profile} refreshKey={boardKey} />}
 
-        <section className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 shadow-xl">
+        {!openMarket && <section className="bg-slate-900/40 border border-slate-900 rounded-2xl p-6 shadow-xl">
           <div className="flex items-center gap-6 mb-6 border-b border-slate-800 pb-4">
             <button onClick={() => setBottomView('upcoming')} className={`font-racing text-xs font-black uppercase tracking-[0.2em] relative ${bottomView === 'upcoming' ? 'text-white' : 'text-slate-600'}`}>Coming Fast {bottomView === 'upcoming' && <span className="absolute -bottom-[17px] left-0 w-full h-0.5 bg-red-600"></span>}</button>
             <button onClick={() => setBottomView('results')} className={`font-racing text-xs font-black uppercase tracking-[0.2em] relative ${bottomView === 'results' ? 'text-white' : 'text-slate-600'}`}>Race Results {bottomView === 'results' && <span className="absolute -bottom-[17px] left-0 w-full h-0.5 bg-red-600"></span>}</button>
@@ -315,7 +327,7 @@ const App: React.FC = () => {
           ) : (
             <RaceResults results={MOCK_RESULTS} />
           )}
-        </section>
+        </section>}
       </main>
 
       <aside className="w-full lg:w-[400px] p-4 lg:p-8 bg-slate-950 border-l border-slate-900 lg:sticky lg:top-0 h-fit lg:h-screen lg:overflow-y-auto">
@@ -350,7 +362,7 @@ const App: React.FC = () => {
         signedIn={!!profile}
         avatar={avatar}
         ghostMode={!!profile?.ghostMode}
-        onSelect={(id) => { setSelectedCategory(id as Category); setSlipOpen(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+        onSelect={(id) => { pickSeries(id); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
         onSlip={() => setSlipOpen((o) => !o)}
         onProfile={() => { setSlipOpen(false); if (profile) openAccount(); else setIsAuthOpen(true); }}
       />
